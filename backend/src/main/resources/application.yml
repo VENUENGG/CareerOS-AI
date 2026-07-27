@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: careeros-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/careeros_db
+    username: postgres
+    password: Venu@5511
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+    show-sql: true
+
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8080
