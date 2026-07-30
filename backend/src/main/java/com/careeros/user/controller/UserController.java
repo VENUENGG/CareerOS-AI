@@ -1,5 +1,7 @@
 package com.careeros.user.controller;
 
+import com.careeros.user.dto.LoginRequest;
+import com.careeros.user.dto.LoginResponse;
 import com.careeros.user.dto.RegisterRequest;
 import com.careeros.user.dto.RegisterResponse;
 import com.careeros.user.service.UserService;
@@ -17,8 +19,11 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public RegisterResponse register(@org.springframework.validation.annotation.Validated @Valid @RequestBody RegisterRequest request) {
-        {
-            return userService.register(request);
-        }
-    }}
+    public RegisterResponse register(@Valid @RequestBody RegisterRequest request) {
+        return userService.register(request);
+    }
+    @PostMapping("/login")
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+        return userService.login(request);
+    }
+}
