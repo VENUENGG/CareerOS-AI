@@ -1,30 +1,22 @@
 package com.careeros.common.response;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 public class ApiErrorResponse {
 
     private boolean success;
     private int status;
     private String message;
-    private Map<String, String> errors;
     private LocalDateTime timestamp;
 
     public ApiErrorResponse() {
         this.timestamp = LocalDateTime.now();
     }
 
-    public ApiErrorResponse(
-            boolean success,
-            int status,
-            String message,
-            Map<String, String> errors
-    ) {
+    public ApiErrorResponse(boolean success, int status, String message) {
         this.success = success;
         this.status = status;
         this.message = message;
-        this.errors = errors;
         this.timestamp = LocalDateTime.now();
     }
 
@@ -50,14 +42,6 @@ public class ApiErrorResponse {
 
     public void setMessage(String message) {
         this.message = message;
-    }
-
-    public Map<String, String> getErrors() {
-        return errors;
-    }
-
-    public void setErrors(Map<String, String> errors) {
-        this.errors = errors;
     }
 
     public LocalDateTime getTimestamp() {

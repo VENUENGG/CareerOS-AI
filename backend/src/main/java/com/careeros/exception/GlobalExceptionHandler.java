@@ -1,5 +1,6 @@
 package com.careeros.exception;
 
+import com.careeros.common.response.ApiErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -9,23 +10,72 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<String> handleEmailAlreadyExists(EmailAlreadyExistsException ex) {
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleEmailAlreadyExists(
+            EmailAlreadyExistsException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(
+                        false,
+                        HttpStatus.CONFLICT.value(),
+                        ex.getMessage()
+                ));
     }
 
     @ExceptionHandler(ProfileAlreadyExistsException.class)
-    public ResponseEntity<String> handleProfileAlreadyExists(ProfileAlreadyExistsException ex) {
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleProfileAlreadyExists(
+            ProfileAlreadyExistsException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(
+                        false,
+                        HttpStatus.CONFLICT.value(),
+                        ex.getMessage()
+                ));
     }
 
     @ExceptionHandler(ProfileNotFoundException.class)
-    public ResponseEntity<String> handleProfileNotFound(ProfileNotFoundException ex) {
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleProfileNotFound(
+            ProfileNotFoundException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse(
+                        false,
+                        HttpStatus.NOT_FOUND.value(),
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiErrorResponse> handleRuntimeException(
+            RuntimeException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiErrorResponse(
+                        false,
+                        HttpStatus.BAD_REQUEST.value(),
+                        ex.getMessage()
+                ));
+    }@ExceptionHandler(UserProfileNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleUserProfileNotFound(
+            UserProfileNotFoundException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse(
+                        false,
+                        HttpStatus.NOT_FOUND.value(),
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(EducationNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleEducationNotFound(
+            EducationNotFoundException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse(
+                        false,
+                        HttpStatus.NOT_FOUND.value(),
+                        ex.getMessage()
+                ));
     }
 }

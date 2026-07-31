@@ -1,5 +1,7 @@
 package com.careeros.user.controller;
 
+import com.careeros.common.constants.MessageConstants;
+import com.careeros.common.response.ApiResponse;
 import com.careeros.user.dto.UserProfileRequest;
 import com.careeros.user.dto.UserProfileResponse;
 import com.careeros.user.service.UserProfileService;
@@ -19,23 +21,50 @@ public class UserProfileController {
     }
 
     @PostMapping
-    public ResponseEntity<UserProfileResponse> createProfile(
+    public ResponseEntity<ApiResponse<UserProfileResponse>> createProfile(
             @Valid @RequestBody UserProfileRequest request
     ) {
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(userProfileService.createProfile(request));
+
+        UserProfileResponse response =
+                userProfileService.createProfile(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>(
+                        true,
+                        MessageConstants.PROFILE_CREATED_SUCCESSFULLY,
+                        response
+                ));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserProfileResponse> getMyProfile() {
-        return ResponseEntity.ok(userProfileService.getMyProfile());
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getMyProfile() {
+
+        UserProfileResponse response =
+                userProfileService.getMyProfile();
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        true,
+                        MessageConstants.PROFILE_FETCHED_SUCCESSFULLY,
+                        response
+                )
+        );
     }
 
     @PutMapping("/me")
-    public ResponseEntity<UserProfileResponse> updateProfile(
+    public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
             @Valid @RequestBody UserProfileRequest request
     ) {
-        return ResponseEntity.ok(userProfileService.updateProfile(request));
+
+        UserProfileResponse response =
+                userProfileService.updateProfile(request);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        true,
+                        MessageConstants.PROFILE_UPDATED_SUCCESSFULLY,
+                        response
+                )
+        );
     }
 }
