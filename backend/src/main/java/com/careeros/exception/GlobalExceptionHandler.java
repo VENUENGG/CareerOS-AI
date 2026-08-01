@@ -1,5 +1,6 @@
 package com.careeros.exception;
 
+import com.careeros.exception.SkillNotFoundException;
 import com.careeros.common.response.ApiErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -81,6 +82,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ExperienceNotFoundException.class)
     public ResponseEntity<String> handleExperienceNotFound(
             ExperienceNotFoundException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ex.getMessage());
+    }
+    @ExceptionHandler(SkillNotFoundException.class)
+    public ResponseEntity<String> handleSkillNotFound(
+            SkillNotFoundException ex
     ) {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
