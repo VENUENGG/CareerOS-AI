@@ -1,5 +1,6 @@
 package com.careeros.exception;
 
+import com.careeros.exception.ResumeNotFoundException;
 import com.careeros.exception.SocialLinksAlreadyExistsException;
 import com.careeros.exception.SocialLinksNotFoundException;
 import com.careeros.exception.LanguageNotFoundException;
@@ -139,6 +140,14 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
+                .body(ex.getMessage());
+    }
+    @ExceptionHandler(ResumeNotFoundException.class)
+    public ResponseEntity<String> handleResumeNotFound(
+            ResumeNotFoundException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
                 .body(ex.getMessage());
     }
 }
