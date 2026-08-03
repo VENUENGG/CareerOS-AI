@@ -1,5 +1,7 @@
 package com.careeros.exception;
 
+import com.careeros.exception.SocialLinksAlreadyExistsException;
+import com.careeros.exception.SocialLinksNotFoundException;
 import com.careeros.exception.LanguageNotFoundException;
 import com.careeros.exception.CertificationNotFoundException;
 import com.careeros.exception.ProjectNotFoundException;
@@ -120,6 +122,23 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
+                .body(ex.getMessage());
+    }
+    @ExceptionHandler(SocialLinksNotFoundException.class)
+    public ResponseEntity<String> handleSocialLinksNotFound(
+            SocialLinksNotFoundException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ex.getMessage());
+    }
+
+    @ExceptionHandler(SocialLinksAlreadyExistsException.class)
+    public ResponseEntity<String> handleSocialLinksAlreadyExists(
+            SocialLinksAlreadyExistsException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
                 .body(ex.getMessage());
     }
 }
