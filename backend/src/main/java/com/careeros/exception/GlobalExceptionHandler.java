@@ -1,5 +1,6 @@
 package com.careeros.exception;
 
+import com.careeros.exception.LanguageNotFoundException;
 import com.careeros.exception.CertificationNotFoundException;
 import com.careeros.exception.ProjectNotFoundException;
 import com.careeros.exception.SkillNotFoundException;
@@ -108,6 +109,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CertificationNotFoundException.class)
     public ResponseEntity<String> handleCertificationNotFound(
             CertificationNotFoundException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ex.getMessage());
+    }
+    @ExceptionHandler(LanguageNotFoundException.class)
+    public ResponseEntity<String> handleLanguageNotFound(
+            LanguageNotFoundException ex
     ) {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
