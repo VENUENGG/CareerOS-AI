@@ -1,5 +1,6 @@
 package com.careeros.exception;
 
+import com.careeros.exception.ResumeSelectionNotFoundException;
 import com.careeros.exception.ResumeNotFoundException;
 import com.careeros.exception.SocialLinksAlreadyExistsException;
 import com.careeros.exception.SocialLinksNotFoundException;
@@ -145,6 +146,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResumeNotFoundException.class)
     public ResponseEntity<String> handleResumeNotFound(
             ResumeNotFoundException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ex.getMessage());
+    }
+    @ExceptionHandler(ResumeSelectionNotFoundException.class)
+    public ResponseEntity<String> handleResumeSelectionNotFound(
+            ResumeSelectionNotFoundException ex
     ) {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
