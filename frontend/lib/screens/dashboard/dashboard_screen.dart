@@ -433,7 +433,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             subtitle: _formatLocation(profile),
           ),
           if (profile?.headline != null) ...[
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: AppColors.border),
             _RoleItem(
               icon: Icons.flag_outlined,
               label: 'Career Headline',
@@ -459,7 +459,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
+          SectionHeader(
             icon: Icons.auto_awesome_outlined,
             title: 'AI Insights',
             subtitle: 'Personalized recommendations',

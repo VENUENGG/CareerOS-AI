@@ -100,14 +100,14 @@ class AppButton extends StatelessWidget {
           AppColors.surfaceElevated,
           AppColors.textPrimary,
           AppColors.primary.withValues(alpha: 0.1),
-          const BorderSide(color: AppColors.border, width: 1),
+          BorderSide(color: AppColors.border, width: 1),
         );
       case AppButtonStyle.outline:
         return (
           Colors.transparent,
           AppColors.textPrimary,
           AppColors.primary.withValues(alpha: 0.08),
-          const BorderSide(color: AppColors.border, width: 1),
+          BorderSide(color: AppColors.border, width: 1),
         );
       case AppButtonStyle.ghost:
         return (

@@ -93,19 +93,18 @@ class _AtsScreenState extends State<AtsScreen> {
 
     try {
       final resumeId = _selectedResume!.id!;
-      if (!await _repository.hasResumeSelections(resumeId)) {
-        // This resume was never curated with specific selections; default
-        // to including everything the user currently has so analysis can
-        // run against their real data instead of failing outright.
-        await _repository.saveResumeSelections(resumeId, {
-          'skillIds': data.skills.map((s) => s.id).whereType<int>().toList(),
-          'projectIds': data.projects.map((p) => p.id).whereType<int>().toList(),
-          'experienceIds': data.experience.map((e) => e.id).whereType<int>().toList(),
-          'educationIds': data.education.map((e) => e.id).whereType<int>().toList(),
-          'certificationIds': data.certifications.map((c) => c.id).whereType<int>().toList(),
-          'languageIds': data.languages.map((l) => l.id).whereType<int>().toList(),
-        });
-      }
+      // This resume may never have been curated with specific selections;
+      // default to including everything the user currently has so analysis
+      // can run against their real data instead of failing outright.
+      await _repository.ensureResumeSelections(
+        resumeId,
+        skillIds: data.skills.map((s) => s.id).whereType<int>().toList(),
+        projectIds: data.projects.map((p) => p.id).whereType<int>().toList(),
+        experienceIds: data.experience.map((e) => e.id).whereType<int>().toList(),
+        educationIds: data.education.map((e) => e.id).whereType<int>().toList(),
+        certificationIds: data.certifications.map((c) => c.id).whereType<int>().toList(),
+        languageIds: data.languages.map((l) => l.id).whereType<int>().toList(),
+      );
       _result = await _repository.atsAnalyze(
         resumeId,
         _analysisType,
@@ -302,7 +301,7 @@ class _AtsScreenState extends State<AtsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
+          SectionHeader(
             icon: Icons.analytics_outlined,
             title: 'Analysis Configuration',
             subtitle: 'Configure how the resume should be analyzed',
@@ -315,7 +314,7 @@ class _AtsScreenState extends State<AtsScreen> {
             items: const ['GENERAL', 'JOB_SPECIFIC']
                 .map((e) => DropdownMenuItem(value: e, child: Text(e.replaceAll('_', ' ')))).toList(),
             onChanged: (v) => setState(() => _analysisType = v!),
-            prefixIcon: const Icon(Icons.analytics_outlined, color: AppColors.textTertiary),
+            prefixIcon: Icon(Icons.analytics_outlined, color: AppColors.textTertiary),
           ),
           if (_analysisType == 'JOB_SPECIFIC') ...[
             const SizedBox(height: AppSpacing.lg),
@@ -324,7 +323,7 @@ class _AtsScreenState extends State<AtsScreen> {
               label: 'Job Title (Optional)',
               hint: 'e.g., Senior Software Engineer',
               validators: [Validators.maxLengthValidator(100, fieldName: 'Job Title')],
-              prefixIcon: const Icon(Icons.work_outline_rounded, color: AppColors.textTertiary),
+              prefixIcon: Icon(Icons.work_outline_rounded, color: AppColors.textTertiary),
             ),
             const SizedBox(height: AppSpacing.lg),
             ValidatedFormField(
@@ -335,7 +334,7 @@ class _AtsScreenState extends State<AtsScreen> {
               validators: [Validators.maxLengthValidator(5000, fieldName: 'Job Description')],
               keyboardType: TextInputType.multiline,
               textInputAction: TextInputAction.newline,
-              prefixIcon: const Icon(Icons.description_outlined, color: AppColors.textTertiary),
+              prefixIcon: Icon(Icons.description_outlined, color: AppColors.textTertiary),
             ),
           ],
           const SizedBox(height: AppSpacing.lg),
@@ -511,7 +510,7 @@ class _HistoryBottomSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.sheet,
-        border: const Border(top: BorderSide(color: AppColors.border, width: 0.5)),
+        border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Column(
         children: [
@@ -531,7 +530,7 @@ class _HistoryBottomSheet extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: AppColors.border),
           Expanded(
             child: history.isEmpty
                 ? Center(

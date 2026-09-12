@@ -417,36 +417,32 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     final avatarController = context.watch<AvatarController>();
     return SliverAppBar(
       // Avatar (88) + gaps + name + optional headline + completion chip row
-      // routinely need ~290-300px once a real profile has a headline set;
-      // 220 was too tight and clipped/overflowed as soon as real data came in.
-      expandedHeight: 300,
+      // routinely need ~250-260px once a real profile has a headline set.
+      expandedHeight: 280,
       floating: false,
       pinned: true,
       backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
+      // Plain toolbar title (matches every other screen's SliverAppBar) --
+      // NOT flexibleSpace.title, which FlexibleSpaceBar always anchors to
+      // the bottom of the expanded space. That put it directly on top of
+      // this bar's own background content (avatar/name/completion chips),
+      // which is also bottom-anchored -- the actual cause of the header
+      // text visually colliding with the avatar block.
+      title: Text('Profile', style: AppTypography.titleLarge),
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: AppSpacing.horizontalLg.copyWith(bottom: 16),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Profile', style: AppTypography.titleLarge),
-            const SizedBox(height: 2),
-            Text('$completion% Complete', style: AppTypography.labelMedium.primary()),
-          ],
-        ),
         background: Container(
           decoration: BoxDecoration(
             gradient: AppColors.surfaceGradient,
           ),
           child: SafeArea(
             child: Padding(
-              padding: AppSpacing.horizontalLg.copyWith(top: 80, bottom: 24),
+              padding: AppSpacing.horizontalLg.copyWith(top: 72, bottom: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   AppAvatar(
                     imageUrl: profile?.profilePhotoUrl,
@@ -745,7 +741,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           label: 'Headline',
           hint: 'Senior Software Engineer | Flutter & AI Enthusiast',
           validators: [Validators.maxLengthValidator(120, fieldName: 'Headline')],
-          prefixIcon: const Icon(Icons.badge_outlined, color: AppColors.textTertiary),
+          prefixIcon: Icon(Icons.badge_outlined, color: AppColors.textTertiary),
         ),
         const SizedBox(height: AppSpacing.lg),
         ValidatedFormField(
@@ -753,7 +749,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           label: 'Current Job Title',
           hint: 'Senior Software Engineer',
           validators: [Validators.maxLengthValidator(100, fieldName: 'Job Title')],
-          prefixIcon: const Icon(Icons.work_outlined, color: AppColors.textTertiary),
+          prefixIcon: Icon(Icons.work_outlined, color: AppColors.textTertiary),
         ),
         const SizedBox(height: AppSpacing.lg),
         ValidatedFormField(
@@ -764,7 +760,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           validators: [Validators.maxLengthValidator(500, fieldName: 'Bio')],
           keyboardType: TextInputType.multiline,
           textInputAction: TextInputAction.newline,
-          prefixIcon: const Icon(Icons.info_outline_rounded, color: AppColors.textTertiary),
+          prefixIcon: Icon(Icons.info_outline_rounded, color: AppColors.textTertiary),
         ),
       ],
     );
@@ -781,7 +777,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 label: 'City',
                 hint: 'San Francisco',
                 validators: [Validators.maxLengthValidator(50, fieldName: 'City')],
-                prefixIcon: const Icon(Icons.location_city_outlined, color: AppColors.textTertiary),
+                prefixIcon: Icon(Icons.location_city_outlined, color: AppColors.textTertiary),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -791,7 +787,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 label: 'State/Province',
                 hint: 'CA',
                 validators: [Validators.maxLengthValidator(50, fieldName: 'State')],
-                prefixIcon: const Icon(Icons.map_outlined, color: AppColors.textTertiary),
+                prefixIcon: Icon(Icons.map_outlined, color: AppColors.textTertiary),
               ),
             ),
           ],
@@ -802,7 +798,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           label: 'Country',
           hint: 'United States',
           validators: [Validators.maxLengthValidator(100, fieldName: 'Country')],
-          prefixIcon: const Icon(Icons.public_outlined, color: AppColors.textTertiary),
+          prefixIcon: Icon(Icons.public_outlined, color: AppColors.textTertiary),
         ),
         const SizedBox(height: AppSpacing.lg),
         ValidatedFormField(
@@ -811,7 +807,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           hint: '+1 (555) 000-0000',
           keyboardType: TextInputType.phone,
           validators: [Validators.maxLengthValidator(30, fieldName: 'Phone')],
-          prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.textTertiary),
+          prefixIcon: Icon(Icons.phone_outlined, color: AppColors.textTertiary),
         ),
       ],
     );
@@ -826,7 +822,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           hint: 'linkedin.com/in/yourname',
           keyboardType: TextInputType.url,
           validators: [Validators.url],
-          prefixIcon: const Icon(Icons.work_outlined, color: AppColors.textTertiary),
+          prefixIcon: Icon(Icons.work_outlined, color: AppColors.textTertiary),
         ),
         const SizedBox(height: AppSpacing.lg),
         ValidatedFormField(
@@ -835,7 +831,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           hint: 'github.com/yourname',
           keyboardType: TextInputType.url,
           validators: [Validators.url],
-          prefixIcon: const Icon(Icons.code_outlined, color: AppColors.textTertiary),
+          prefixIcon: Icon(Icons.code_outlined, color: AppColors.textTertiary),
         ),
         const SizedBox(height: AppSpacing.lg),
         ValidatedFormField(
@@ -844,7 +840,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           hint: 'yourname.dev',
           keyboardType: TextInputType.url,
           validators: [Validators.url],
-          prefixIcon: const Icon(Icons.web_outlined, color: AppColors.textTertiary),
+          prefixIcon: Icon(Icons.web_outlined, color: AppColors.textTertiary),
         ),
       ],
     );

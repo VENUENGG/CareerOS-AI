@@ -18,6 +18,7 @@ import 'package:careeros/core/storage/token_storage.dart';
 import 'package:careeros/core/theme/app_theme.dart';
 import 'package:careeros/core/widgets/app_shell.dart';
 import 'package:careeros/providers/app_providers.dart';
+import 'package:careeros/providers/theme_controller.dart';
 import 'package:careeros/repositories/careeros_repository.dart';
 import 'package:careeros/screens/ai/ai_screen.dart';
 import 'package:careeros/screens/ats/ats_screen.dart';
@@ -123,6 +124,7 @@ void main() {
             ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
             ChangeNotifierProvider<CareerDataProvider>.value(value: careerDataProvider),
             ChangeNotifierProvider<AvatarController>.value(value: avatarController),
+            ChangeNotifierProvider(create: (_) => ThemeController()),
             Provider<CareerOSRepository>.value(value: repository),
           ],
           child: MaterialApp(

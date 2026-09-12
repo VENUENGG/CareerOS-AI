@@ -48,6 +48,30 @@ class CareerOSRepository {
     }
   }
   Future<void> saveResumeSelections(int resumeId, Map<String,dynamic> d) => api.post('/v1/resumes/$resumeId/selections', data: d);
+  // Shared by every feature that needs a resume "rendered" -- ATS analysis,
+  // PDF export, and the HTML preview all 400 with "Resume selections not
+  // found" otherwise. One helper instead of duplicating this check at each
+  // call site.
+  Future<void> ensureResumeSelections(int resumeId, {
+    required List<int> skillIds,
+    required List<int> projectIds,
+    required List<int> experienceIds,
+    required List<int> educationIds,
+    required List<int> certificationIds,
+    required List<int> languageIds,
+  }) async {
+    if (await hasResumeSelections(resumeId)) return;
+    await saveResumeSelections(resumeId, {
+      'skillIds': skillIds,
+      'projectIds': projectIds,
+      'experienceIds': experienceIds,
+      'educationIds': educationIds,
+      'certificationIds': certificationIds,
+      'languageIds': languageIds,
+    });
+  }
+
+  Future<List<int>> resumePdfBytes(int resumeId) => api.getBytes('/v1/resumes/$resumeId/pdf');
 
   Future<AtsAnalysis> atsAnalyze(int resumeId,String type,{String?jobTitle,String?jobDescription}) async { final r=await api.post('/v1/resumes/$resumeId/ats/analyze',data:{'analysisType':type,'jobTitle':jobTitle,'jobDescription':jobDescription}); return AtsAnalysis.fromJson(Map<String,dynamic>.from(r.data)); }
   Future<AtsAnalysis> atsLatest(int resumeId) async { final r=await api.get('/v1/resumes/$resumeId/ats/latest'); return AtsAnalysis.fromJson(Map<String,dynamic>.from(r.data)); }

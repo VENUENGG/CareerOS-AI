@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'colors.dart';
 
 class AppTypography {
   static const String fontFamily = 'Inter';
@@ -123,23 +124,25 @@ class AppTypography {
     letterSpacing: 0.5,
   );
 
-  static const TextStyle caption = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 11,
-    fontWeight: FontWeight.w400,
-    height: 1.4,
-    letterSpacing: 0.4,
-    color: Color(0xFF94A3B8),
-  );
+  // Not `const` (unlike the styles above) because these two bake in a
+  // color, and that color must track the active theme.
+  static TextStyle get caption => TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 11,
+        fontWeight: FontWeight.w400,
+        height: 1.4,
+        letterSpacing: 0.4,
+        color: AppColors.textSecondary,
+      );
 
-  static const TextStyle overline = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 10,
-    fontWeight: FontWeight.w600,
-    height: 1.4,
-    letterSpacing: 1.5,
-    color: Color(0xFF64748B),
-  );
+  static TextStyle get overline => TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 10,
+        fontWeight: FontWeight.w600,
+        height: 1.4,
+        letterSpacing: 1.5,
+        color: AppColors.textTertiary,
+      );
 
   static const TextStyle buttonLarge = TextStyle(
     fontFamily: fontFamily,
@@ -172,13 +175,15 @@ extension TextStyleExtensions on TextStyle {
   TextStyle withSize(double size) => copyWith(fontSize: size);
   TextStyle withHeight(double height) => copyWith(height: height);
   TextStyle withLetterSpacing(double spacing) => copyWith(letterSpacing: spacing);
-  TextStyle muted() => copyWith(color: const Color(0xFF94A3B8));
-  TextStyle subtle() => copyWith(color: const Color(0xFF64748B));
-  TextStyle onSurface() => copyWith(color: const Color(0xFFFFFFFF));
-  TextStyle onPrimary() => copyWith(color: const Color(0xFF08090C));
-  TextStyle primary() => copyWith(color: const Color(0xFF7C5CFF));
-  TextStyle success() => copyWith(color: const Color(0xFF10B981));
-  TextStyle warning() => copyWith(color: const Color(0xFFF59E0B));
-  TextStyle danger() => copyWith(color: const Color(0xFFEF4444));
-  TextStyle ai() => copyWith(color: const Color(0xFF8B5CF6));
+  // These read AppColors at call time (not compile-time literals) so text
+  // styled with them still flips correctly when the theme changes.
+  TextStyle muted() => copyWith(color: AppColors.textSecondary);
+  TextStyle subtle() => copyWith(color: AppColors.textTertiary);
+  TextStyle onSurface() => copyWith(color: AppColors.textPrimary);
+  TextStyle onPrimary() => copyWith(color: AppColors.onPrimary);
+  TextStyle primary() => copyWith(color: AppColors.primary);
+  TextStyle success() => copyWith(color: AppColors.success);
+  TextStyle warning() => copyWith(color: AppColors.warning);
+  TextStyle danger() => copyWith(color: AppColors.danger);
+  TextStyle ai() => copyWith(color: AppColors.ai);
 }

@@ -373,11 +373,14 @@ class ResumeCard extends StatelessWidget {
   final bool? isPublic;
   final DateTime? updatedAt;
   final VoidCallback? onTap;
+  final VoidCallback? onOpen;
+  final VoidCallback? onShare;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onDuplicate;
   final VoidCallback? onUseForAts;
   final bool selected;
+  final bool busy;
 
   const ResumeCard({
     super.key,
@@ -387,11 +390,14 @@ class ResumeCard extends StatelessWidget {
     this.isPublic,
     this.updatedAt,
     this.onTap,
+    this.onOpen,
+    this.onShare,
     this.onEdit,
     this.onDuplicate,
     this.onUseForAts,
     this.onDelete,
     this.selected = false,
+    this.busy = false,
   });
 
   @override
@@ -408,7 +414,7 @@ class ResumeCard extends StatelessWidget {
               color: AppColors.primaryContainer,
               borderRadius: BorderRadius.circular(AppRadii.md),
             ),
-            child: const Center(child: Icon(Icons.description_outlined, color: AppColors.primary, size: 24)),
+            child: Center(child: Icon(Icons.description_outlined, color: AppColors.primary, size: 24)),
           ),
           const SizedBox(width: AppSpacing.lg),
           Expanded(
@@ -441,24 +447,35 @@ class ResumeCard extends StatelessWidget {
               ],
             ),
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded, color: AppColors.textTertiary),
-            onSelected: (value) {
-              switch (value) {
-                case 'edit': onEdit?.call(); break;
-                case 'duplicate': onDuplicate?.call(); break;
-                case 'ats': onUseForAts?.call(); break;
-                case 'delete': onDelete?.call(); break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'edit', child: Text('Edit')),
-              const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
-              const PopupMenuItem(value: 'ats', child: Text('Use for ATS Analysis')),
-              const PopupMenuDivider(),
-              const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.danger))),
-            ],
-          ),
+          if (busy)
+            const Padding(
+              padding: EdgeInsets.all(AppSpacing.sm),
+              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert_rounded, color: AppColors.textTertiary),
+              onSelected: (value) {
+                switch (value) {
+                  case 'open': onOpen?.call(); break;
+                  case 'share': onShare?.call(); break;
+                  case 'edit': onEdit?.call(); break;
+                  case 'duplicate': onDuplicate?.call(); break;
+                  case 'ats': onUseForAts?.call(); break;
+                  case 'delete': onDelete?.call(); break;
+                }
+              },
+              itemBuilder: (context) => [
+                if (onOpen != null) const PopupMenuItem(value: 'open', child: Text('Open PDF')),
+                if (onShare != null) const PopupMenuItem(value: 'share', child: Text('Share')),
+                if (onOpen != null || onShare != null) const PopupMenuDivider(),
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
+                const PopupMenuItem(value: 'ats', child: Text('Use for ATS Analysis')),
+                const PopupMenuDivider(),
+                PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.danger))),
+              ],
+            ),
         ],
       ),
     );
@@ -943,7 +960,7 @@ class AIInsightCard extends StatelessWidget {
   final String title;
   final String content;
   final IconData icon;
-  final Color color;
+  final Color? color;
   final List<String>? actions;
   final ValueChanged<String>? onAction;
 
@@ -952,13 +969,14 @@ class AIInsightCard extends StatelessWidget {
     required this.title,
     required this.content,
     this.icon = Icons.auto_awesome_outlined,
-    this.color = AppColors.ai,
+    this.color,
     this.actions,
     this.onAction,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = color ?? AppColors.ai;
     return AppCard(
       padding: AppSpacing.cardPadding,
       child: Column(
@@ -968,8 +986,8 @@ class AIInsightCard extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(AppRadii.md)),
-                child: Icon(icon, color: color, size: 20),
+                decoration: BoxDecoration(color: effectiveColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(AppRadii.md)),
+                child: Icon(icon, color: effectiveColor, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(child: Text(title, style: AppTypography.titleMedium)),

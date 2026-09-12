@@ -256,7 +256,7 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
+          SectionHeader(
             icon: Icons.history_rounded,
             title: 'Recent Estimates',
             subtitle: 'Your salary estimate history',
@@ -310,7 +310,7 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
+          SectionHeader(
             icon: Icons.analytics_outlined,
             title: 'Market Estimate',
             subtitle: 'Enter details to get a personalized salary range',
@@ -327,7 +327,7 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
                   label: 'Job Title',
                   hint: 'e.g., Senior Software Engineer',
                   validators: [Validators.required, Validators.minLengthValidator(2, fieldName: 'Job Title'), Validators.maxLengthValidator(100, fieldName: 'Job Title')],
-                  prefixIcon: const Icon(Icons.work_outline_rounded, color: AppColors.textTertiary),
+                  prefixIcon: Icon(Icons.work_outline_rounded, color: AppColors.textTertiary),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Row(
@@ -338,7 +338,7 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
                         label: 'Location',
                         hint: 'e.g., San Francisco, CA',
                         validators: [Validators.required, Validators.maxLengthValidator(100, fieldName: 'Location')],
-                        prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.textTertiary),
+                        prefixIcon: Icon(Icons.location_on_outlined, color: AppColors.textTertiary),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.md),
@@ -348,7 +348,7 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
                         label: 'Industry',
                         hint: 'e.g., Technology',
                         validators: [Validators.maxLengthValidator(100, fieldName: 'Industry')],
-                        prefixIcon: const Icon(Icons.factory_outlined, color: AppColors.textTertiary),
+                        prefixIcon: Icon(Icons.factory_outlined, color: AppColors.textTertiary),
                       ),
                     ),
                   ],
@@ -367,7 +367,7 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
                           Validators.integerValidator(),
                           Validators.rangeValidator(0, 50, fieldName: 'Experience'),
                         ],
-                        prefixIcon: const Icon(Icons.timeline_outlined, color: AppColors.textTertiary),
+                        prefixIcon: Icon(Icons.timeline_outlined, color: AppColors.textTertiary),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.md),
@@ -381,7 +381,7 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
                           Validators.numericValidator(),
                           Validators.positiveValidator(fieldName: 'Salary'),
                         ],
-                        prefixIcon: const Icon(Icons.attach_money_rounded, color: AppColors.textTertiary),
+                        prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.textTertiary),
                       ),
                     ),
                   ],
@@ -687,7 +687,7 @@ class _SalaryHistorySheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.sheet,
-        border: const Border(top: BorderSide(color: AppColors.border, width: 0.5)),
+        border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Column(
         children: [
@@ -707,7 +707,7 @@ class _SalaryHistorySheet extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: AppColors.border),
           Expanded(
             child: history.isEmpty
                 ? Center(

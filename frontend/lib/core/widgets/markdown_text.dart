@@ -60,8 +60,8 @@ class MarkdownText extends StatelessWidget {
         ));
         i++;
       } else if (trimmed == '---' || trimmed == '***') {
-        blocks.add(const Padding(
-          padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+        blocks.add(Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           child: Divider(height: 1, color: AppColors.border),
         ));
         i++;

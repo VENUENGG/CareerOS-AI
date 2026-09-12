@@ -27,7 +27,7 @@ class AppShell extends StatelessWidget {
           backgroundColor: AppColors.background,
           bottomNavigationBar: wide ? null : _MobileBottomNav(currentPath: currentPath),
           body: Container(
-            decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+            decoration: BoxDecoration(gradient: AppColors.backgroundGradient),
             child: wide
                 ? Row(
                     children: [
@@ -50,7 +50,7 @@ Future<void> _confirmSignOut(BuildContext context) async {
     context: context,
     builder: (context) => AlertDialog(
       backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: AppRadii.dialog, side: const BorderSide(color: AppColors.border, width: 0.5)),
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.dialog, side: BorderSide(color: AppColors.border, width: 0.5)),
       title: Text('Sign out?', style: AppTypography.titleMedium),
       content: Text('You\'ll need to sign in again to access your CareerOS account.', style: AppTypography.bodyMedium),
       actions: [
@@ -76,7 +76,7 @@ class _MobileBottomNav extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: const Border(top: BorderSide(color: AppColors.border, width: 0.5)),
+        border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: SafeArea(
         top: false,
@@ -87,7 +87,7 @@ class _MobileBottomNav extends StatelessWidget {
           backgroundColor: AppColors.surface,
           indicatorColor: AppColors.primaryContainer,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: const [
+          destinations: [
             NavigationDestination(
               icon: Icon(Icons.grid_view_rounded, size: 24),
               selectedIcon: Icon(Icons.grid_view_rounded, size: 24, color: AppColors.primary),
@@ -157,7 +157,7 @@ class _MoreBottomSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.sheet,
-        border: const Border(top: BorderSide(color: AppColors.border, width: 0.5)),
+        border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -191,7 +191,7 @@ class _MoreBottomSheet extends StatelessWidget {
             selected: currentPath.startsWith('/salary'),
             onTap: () => _navigate(context, '/salary'),
           ),
-          const Divider(height: 1, color: AppColors.border, indent: AppSpacing.lg, endIndent: AppSpacing.lg),
+          Divider(height: 1, color: AppColors.border, indent: AppSpacing.lg, endIndent: AppSpacing.lg),
           _MoreItem(
             icon: Icons.settings_rounded,
             label: 'Settings',
@@ -284,7 +284,7 @@ class _Sidebar extends StatelessWidget {
       padding: AppSpacing.xlAll,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: const Border(right: BorderSide(color: AppColors.border, width: 0.5)),
+        border: Border(right: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,7 +299,7 @@ class _Sidebar extends StatelessWidget {
                   color: AppColors.primaryContainer,
                   borderRadius: BorderRadius.circular(AppRadii.lg),
                 ),
-                child: const Center(child: Icon(Icons.work_outline_rounded, color: AppColors.primary, size: 24)),
+                child: Center(child: Icon(Icons.work_outline_rounded, color: AppColors.primary, size: 24)),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -336,7 +336,7 @@ class _Sidebar extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          const Divider(color: AppColors.border),
+          Divider(color: AppColors.border),
           const SizedBox(height: AppSpacing.md),
           _SidebarItem(
             route: '',

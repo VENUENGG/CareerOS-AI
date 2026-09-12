@@ -98,7 +98,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -189,7 +189,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               validators: [Validators.required, Validators.email],
-              prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textTertiary),
+              prefixIcon: Icon(Icons.email_outlined, color: AppColors.textTertiary),
             ),
             const SizedBox(height: AppSpacing.lg),
             ValidatedFormField(
@@ -202,7 +202,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 Validators.required,
                 if (register) Validators.minLengthValidator(8, fieldName: 'Password'),
               ],
-              prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.textTertiary),
+              prefixIcon: Icon(Icons.lock_outline_rounded, color: AppColors.textTertiary),
               suffixIcon: IconButton(
                 icon: Icon(obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: AppColors.textTertiary),
                 onPressed: () => setState(() => obscure = !obscure),

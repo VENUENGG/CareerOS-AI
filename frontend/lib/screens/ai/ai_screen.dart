@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/design/design.dart';
 import '../../core/validation/validation.dart';
 import '../../core/widgets/widgets.dart';
 import '../../models/models.dart';
+import '../../providers/app_providers.dart';
 import '../../repositories/careeros_repository.dart';
 import '../../core/network/api_client.dart';
 
@@ -106,6 +108,14 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
 
   String _formatError(ApiException e) {
     switch (e.statusCode) {
+      case 400:
+        // The backend's 400 messages here are genuinely actionable ("User
+        // profile not found.") -- show them instead of a generic fallback
+        // that hides why the request actually failed.
+        if (e.message.toLowerCase().contains('profile not found')) {
+          return 'Add a headline and current role to your profile before using Career Coach.';
+        }
+        return e.message.isNotEmpty ? e.message : 'That request wasn\'t valid. Please check your input and try again.';
       case 401:
         return 'Session expired. Please sign in again.';
       case 403:
@@ -275,45 +285,64 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
   }
 
   Widget _buildCareerCoachSection() {
+    // Career Coach reads the user's profile to ground its assessment; the
+    // backend 400s with "User profile not found" for an account that
+    // hasn't created one yet. Catching that up front as a real empty state
+    // (with a way out) beats letting the user hit a generic error after
+    // typing out a goal.
+    final hasProfile = context.watch<AuthProvider>().profileData != null;
+
     return AppCard(
       padding: AppSpacing.cardPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
+          SectionHeader(
             icon: Icons.psychology_rounded,
             title: 'Career Coach',
             subtitle: 'Goal → Assessment → Roles → Gaps → Roadmap → Actions',
             iconColor: AppColors.ai,
           ),
           const SizedBox(height: AppSpacing.lg),
-          ValidatedFormField(
-            controller: _goalController,
-            label: 'What career goal are you pursuing?',
-            hint: 'e.g., Transition to AI Engineering, Get promoted to Staff Engineer, Switch to Product Management',
-            maxLines: 3,
-            validators: [Validators.required, Validators.minLengthValidator(10, fieldName: 'Goal')],
-            keyboardType: TextInputType.multiline,
-            textInputAction: TextInputAction.newline,
-            prefixIcon: const Icon(Icons.flag_outlined, color: AppColors.textTertiary),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          AppButton(
-            label: _coachBusy ? 'Generating roadmap...' : 'Generate Career Roadmap',
-            onPressed: _coachBusy ? null : _runCoach,
-            loading: _coachBusy,
-            fullWidth: true,
-            size: AppButtonSize.large,
-            style: AppButtonStyle.ai,
-            leading: _coachBusy ? null : const Icon(Icons.auto_awesome_rounded, size: 22),
-          ),
-          if (_coachError != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            ErrorBanner(message: _coachError!, onDismiss: () => setState(() => _coachError = null), icon: Icons.error_outline_rounded),
-          ],
-          if (_coach != null) ...[
-            const SizedBox(height: AppSpacing.xl),
-            _buildCoachResult(_coach!),
+          if (!hasProfile) ...[
+            EmptyState(
+              icon: Icons.person_outline_rounded,
+              title: 'Complete your profile first',
+              description: 'Career Coach builds your assessment from your real profile -- add your role and background to get started.',
+              actionLabel: 'Go to Profile',
+              onAction: () => context.go('/profile'),
+              iconSize: 40,
+              padding: AppSpacing.xlAll,
+            ),
+          ] else ...[
+            ValidatedFormField(
+              controller: _goalController,
+              label: 'What career goal are you pursuing?',
+              hint: 'e.g., Transition to AI Engineering, Get promoted to Staff Engineer, Switch to Product Management',
+              maxLines: 3,
+              validators: [Validators.required, Validators.minLengthValidator(10, fieldName: 'Goal')],
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              prefixIcon: Icon(Icons.flag_outlined, color: AppColors.textTertiary),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppButton(
+              label: _coachBusy ? 'Generating roadmap...' : 'Generate Career Roadmap',
+              onPressed: _coachBusy ? null : _runCoach,
+              loading: _coachBusy,
+              fullWidth: true,
+              size: AppButtonSize.large,
+              style: AppButtonStyle.ai,
+              leading: _coachBusy ? null : const Icon(Icons.auto_awesome_rounded, size: 22),
+            ),
+            if (_coachError != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              ErrorBanner(message: _coachError!, onDismiss: () => setState(() => _coachError = null), icon: Icons.error_outline_rounded),
+            ],
+            if (_coach != null) ...[
+              const SizedBox(height: AppSpacing.xl),
+              _buildCoachResult(_coach!),
+            ],
           ],
         ],
       ),
@@ -422,7 +451,7 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
             validators: [Validators.required, Validators.minLengthValidator(5, fieldName: 'Question')],
             keyboardType: TextInputType.multiline,
             textInputAction: TextInputAction.newline,
-            prefixIcon: const Icon(Icons.chat_outlined, color: AppColors.textTertiary),
+            prefixIcon: Icon(Icons.chat_outlined, color: AppColors.textTertiary),
           ),
           const SizedBox(height: AppSpacing.lg),
           AppButton(
@@ -485,7 +514,7 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
+          SectionHeader(
             icon: Icons.lightbulb_outline_rounded,
             title: 'Suggested Questions',
             subtitle: 'Tap to start a conversation',

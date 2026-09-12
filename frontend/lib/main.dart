@@ -7,6 +7,7 @@ import 'core/storage/token_storage.dart'
     show TokenStorage;
 import 'providers/app_providers.dart'
     show AuthProvider, CareerDataProvider, AvatarController;
+import 'providers/theme_controller.dart' show ThemeController;
 import 'repositories/careeros_repository.dart'
     show CareerOSRepository;
 
@@ -24,6 +25,7 @@ void main() {
         ChangeNotifierProvider(create: AuthProvider.create),
         ChangeNotifierProvider(create: CareerDataProvider.create),
         ChangeNotifierProvider(create: (_) => AvatarController()),
+        ChangeNotifierProvider(create: (_) => ThemeController()),
       ],
       child: const CareerOSApp(),
     ),

@@ -2,12 +2,24 @@ import 'package:flutter/material.dart';
 import '../design/design.dart';
 
 class AppTheme {
-  static ThemeData get dark => _buildDarkTheme();
-  static ThemeData get light => _buildLightTheme();
+  // AppColors' fields are runtime getters that resolve against whichever
+  // brightness was last set (see colors.dart) -- setting it here, right
+  // before building the ThemeData that consumes it, is what makes these two
+  // getters produce two genuinely different, independently-colored themes
+  // rather than one theme with a brightness flag flipped.
+  static ThemeData get dark {
+    AppColors.setBrightness(Brightness.dark);
+    return _buildTheme(Brightness.dark);
+  }
 
-  static ThemeData _buildDarkTheme() {
-    const ColorScheme colorScheme = ColorScheme(
-      brightness: Brightness.dark,
+  static ThemeData get light {
+    AppColors.setBrightness(Brightness.light);
+    return _buildTheme(Brightness.light);
+  }
+
+  static ThemeData _buildTheme(Brightness brightness) {
+    final ColorScheme colorScheme = ColorScheme(
+      brightness: brightness,
       primary: AppColors.primary,
       onPrimary: AppColors.onPrimary,
       primaryContainer: AppColors.primaryContainer,
@@ -39,7 +51,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: brightness,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.background,
       fontFamily: AppTypography.fontFamily,
@@ -50,7 +62,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadii.card,
-          side: const BorderSide(color: AppColors.border, width: 0.5),
+          side: BorderSide(color: AppColors.border, width: 0.5),
         ),
         clipBehavior: Clip.antiAlias,
       ),
@@ -64,23 +76,23 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: AppRadii.input,
-          borderSide: const BorderSide(color: AppColors.border, width: 0.5),
+          borderSide: BorderSide(color: AppColors.border, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: AppRadii.input,
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: AppRadii.input,
-          borderSide: const BorderSide(color: AppColors.danger, width: 1),
+          borderSide: BorderSide(color: AppColors.danger, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: AppRadii.input,
-          borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
+          borderSide: BorderSide(color: AppColors.danger, width: 1.5),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: AppRadii.input,
-          borderSide: const BorderSide(color: AppColors.border, width: 0.5),
+          borderSide: BorderSide(color: AppColors.border, width: 0.5),
         ),
         labelStyle: AppTypography.bodyMedium.muted(),
         hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.placeholder),
@@ -131,7 +143,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.md),
           shape: RoundedRectangleBorder(borderRadius: AppRadii.button),
           foregroundColor: AppColors.textPrimary,
-          side: const BorderSide(color: AppColors.border, width: 1),
+          side: BorderSide(color: AppColors.border, width: 1),
           textStyle: AppTypography.buttonLarge,
         ).copyWith(
           overlayColor: WidgetStateProperty.resolveWith((states) {
@@ -170,7 +182,7 @@ class AppTheme {
           }),
         ),
       ),
-      dividerTheme: const DividerThemeData(
+      dividerTheme: DividerThemeData(
         color: AppColors.divider,
         thickness: 0.5,
         space: 1,
@@ -185,7 +197,7 @@ class AppTheme {
         secondaryLabelStyle: AppTypography.labelMedium.onPrimary(),
         shape: RoundedRectangleBorder(
           borderRadius: AppRadii.chip,
-          side: const BorderSide(color: AppColors.border, width: 0.5),
+          side: BorderSide(color: AppColors.border, width: 0.5),
         ),
         side: BorderSide.none,
         elevation: 0,
@@ -228,8 +240,8 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: AppTypography.titleLarge,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 24),
-        actionsIconTheme: const IconThemeData(color: AppColors.textPrimary, size: 24),
+        iconTheme: IconThemeData(color: AppColors.textPrimary, size: 24),
+        actionsIconTheme: IconThemeData(color: AppColors.textPrimary, size: 24),
         toolbarHeight: 64,
         systemOverlayStyle: null,
       ),
@@ -248,7 +260,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadii.dialog,
-          side: const BorderSide(color: AppColors.border, width: 0.5),
+          side: BorderSide(color: AppColors.border, width: 0.5),
         ),
         titleTextStyle: AppTypography.titleLarge,
         contentTextStyle: AppTypography.bodyMedium,
@@ -260,7 +272,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadii.sheet,
-          side: const BorderSide(color: AppColors.border, width: 0.5),
+          side: BorderSide(color: AppColors.border, width: 0.5),
         ),
         modalBackgroundColor: AppColors.surfaceSecondary,
         dragHandleColor: AppColors.textTertiary,
@@ -340,11 +352,11 @@ class AppTheme {
         collapsedBackgroundColor: AppColors.surfaceSecondary,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadii.card,
-          side: const BorderSide(color: AppColors.border, width: 0.5),
+          side: BorderSide(color: AppColors.border, width: 0.5),
         ),
         collapsedShape: RoundedRectangleBorder(
           borderRadius: AppRadii.card,
-          side: const BorderSide(color: AppColors.border, width: 0.5),
+          side: BorderSide(color: AppColors.border, width: 0.5),
         ),
         textColor: AppColors.textPrimary,
         iconColor: AppColors.textSecondary,
@@ -372,7 +384,7 @@ class AppTheme {
           shape: WidgetStateProperty.all(
             RoundedRectangleBorder(
               borderRadius: AppRadii.card,
-              side: const BorderSide(color: AppColors.border, width: 0.5),
+              side: BorderSide(color: AppColors.border, width: 0.5),
             ),
           ),
         ),
@@ -383,7 +395,7 @@ class AppTheme {
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadii.card,
-          side: const BorderSide(color: AppColors.border, width: 0.5),
+          side: BorderSide(color: AppColors.border, width: 0.5),
         ),
         textStyle: AppTypography.bodyMedium,
         labelTextStyle: WidgetStateProperty.all(AppTypography.bodyMedium),
@@ -419,14 +431,6 @@ class AppTheme {
         todayForegroundColor: WidgetStateProperty.all(AppColors.primary),
         shape: RoundedRectangleBorder(borderRadius: AppRadii.card),
       ),
-    );
-  }
-
-  static ThemeData _buildLightTheme() {
-    return _buildDarkTheme().copyWith(
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: Colors.white,
-      colorScheme: _buildDarkTheme().colorScheme.copyWith(brightness: Brightness.light),
     );
   }
 

@@ -18,6 +18,7 @@ import 'package:careeros/core/storage/token_storage.dart';
 import 'package:careeros/core/theme/app_theme.dart';
 import 'package:careeros/core/widgets/app_shell.dart';
 import 'package:careeros/providers/app_providers.dart';
+import 'package:careeros/providers/theme_controller.dart';
 import 'package:careeros/repositories/careeros_repository.dart';
 import 'package:careeros/screens/ai/ai_screen.dart';
 import 'package:careeros/screens/ats/ats_screen.dart';
@@ -40,6 +41,7 @@ Widget _harness(Widget shellChild, {required String currentPath}) {
       ChangeNotifierProvider(create: AuthProvider.create),
       ChangeNotifierProvider(create: CareerDataProvider.create),
       ChangeNotifierProvider(create: (_) => AvatarController()),
+      ChangeNotifierProvider(create: (_) => ThemeController()),
     ],
     child: MaterialApp(
       theme: AppTheme.dark,

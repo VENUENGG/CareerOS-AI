@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/design/design.dart';
 import '../../core/validation/validation.dart';
@@ -29,6 +32,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
   bool _showCreateForm = false;
   bool _editingExisting = false;
   int? _editingResumeId;
+  int? _processingResumeId;
 
   late final CareerOSRepository _repository;
 
@@ -186,7 +190,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: AppRadii.dialog, side: const BorderSide(color: AppColors.border, width: 0.5)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.dialog, side: BorderSide(color: AppColors.border, width: 0.5)),
         title: Text('Delete Resume', style: AppTypography.titleMedium),
         content: Text('Are you sure you want to delete this resume? This action cannot be undone.', style: AppTypography.bodyMedium),
         actions: [
@@ -223,6 +227,69 @@ class _ResumeScreenState extends State<ResumeScreen> {
 
   void _useForAts(Resume resume) {
     context.go('/ats?resumeId=${resume.id}');
+  }
+
+  Future<void> _ensureSelections(int resumeId) {
+    final data = context.read<CareerDataProvider>();
+    return _repository.ensureResumeSelections(
+      resumeId,
+      skillIds: data.skills.map((s) => s.id).whereType<int>().toList(),
+      projectIds: data.projects.map((p) => p.id).whereType<int>().toList(),
+      experienceIds: data.experience.map((e) => e.id).whereType<int>().toList(),
+      educationIds: data.education.map((e) => e.id).whereType<int>().toList(),
+      certificationIds: data.certifications.map((c) => c.id).whereType<int>().toList(),
+      languageIds: data.languages.map((l) => l.id).whereType<int>().toList(),
+    );
+  }
+
+  Future<void> _openResume(Resume resume) async {
+    if (resume.id == null) return;
+    setState(() => _processingResumeId = resume.id);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      // The renderer 400s until the resume has a curated selection; a
+      // resume that was created but never explicitly curated still needs
+      // one before it can be opened, same as ATS analysis.
+      await _ensureSelections(resume.id!);
+      if (mounted) {
+        context.push('/resume/${resume.id}/view?title=${Uri.encodeComponent(resume.title ?? 'Resume')}');
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(_formatError(e)), backgroundColor: AppColors.dangerContainer, behavior: SnackBarBehavior.floating));
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: const Text('Couldn\'t open this resume. Please try again.'), backgroundColor: AppColors.dangerContainer, behavior: SnackBarBehavior.floating));
+      }
+    } finally {
+      if (mounted) setState(() => _processingResumeId = null);
+    }
+  }
+
+  Future<void> _shareResume(Resume resume) async {
+    if (resume.id == null) return;
+    setState(() => _processingResumeId = resume.id);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _ensureSelections(resume.id!);
+      final bytes = await _repository.resumePdfBytes(resume.id!);
+      final safeName = (resume.title ?? 'Resume').replaceAll(RegExp(r'[^\w\s-]'), '').trim();
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile.fromData(Uint8List.fromList(bytes), name: '${safeName.isEmpty ? 'Resume' : safeName}.pdf', mimeType: 'application/pdf')],
+        text: 'My resume${resume.title != null ? ': ${resume.title}' : ''}',
+      ));
+    } on ApiException catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(_formatError(e)), backgroundColor: AppColors.dangerContainer, behavior: SnackBarBehavior.floating));
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: const Text('Couldn\'t share this resume. Please try again.'), backgroundColor: AppColors.dangerContainer, behavior: SnackBarBehavior.floating));
+      }
+    } finally {
+      if (mounted) setState(() => _processingResumeId = null);
+    }
   }
 
   void _duplicateResume(Resume resume) {
@@ -370,7 +437,10 @@ class _ResumeScreenState extends State<ResumeScreen> {
                         isPublic: resume.isPublic,
                         updatedAt: resume.updatedAt,
                         selected: false,
-                        onTap: () => _useForAts(resume),
+                        busy: _processingResumeId == resume.id,
+                        onTap: () => _openResume(resume),
+                        onOpen: () => _openResume(resume),
+                        onShare: () => _shareResume(resume),
                         onEdit: () => _editResume(resume),
                         onDuplicate: () => _duplicateResume(resume),
                         onUseForAts: () => _useForAts(resume),
@@ -411,7 +481,10 @@ class _ResumeScreenState extends State<ResumeScreen> {
                         isPublic: resume.isPublic,
                         updatedAt: resume.updatedAt,
                         selected: false,
-                        onTap: () => _useForAts(resume),
+                        busy: _processingResumeId == resume.id,
+                        onTap: () => _openResume(resume),
+                        onOpen: () => _openResume(resume),
+                        onShare: () => _shareResume(resume),
                         onEdit: () => _editResume(resume),
                         onDuplicate: () => _duplicateResume(resume),
                         onUseForAts: () => _useForAts(resume),
@@ -464,7 +537,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
                           label: 'Resume Title',
                           hint: 'Senior Software Engineer Resume',
                           validators: [Validators.required, Validators.minLengthValidator(3, fieldName: 'Title'), Validators.maxLengthValidator(100, fieldName: 'Title')],
-                          prefixIcon: const Icon(Icons.title_rounded, color: AppColors.textTertiary),
+                          prefixIcon: Icon(Icons.title_rounded, color: AppColors.textTertiary),
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         AppSelectField<String>(
@@ -473,7 +546,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
                           items: const ['MODERN', 'PROFESSIONAL', 'MINIMAL', 'DEVELOPER', 'EXECUTIVE']
                               .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                           onChanged: (v) => setState(() => _template = v!),
-                          prefixIcon: const Icon(Icons.dashboard_customize_rounded, color: AppColors.textTertiary),
+                          prefixIcon: Icon(Icons.dashboard_customize_rounded, color: AppColors.textTertiary),
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         ValidatedFormField(
@@ -484,7 +557,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
                           validators: [Validators.maxLengthValidator(1000, fieldName: 'Summary')],
                           keyboardType: TextInputType.multiline,
                           textInputAction: TextInputAction.newline,
-                          prefixIcon: const Icon(Icons.summarize_rounded, color: AppColors.textTertiary),
+                          prefixIcon: Icon(Icons.summarize_rounded, color: AppColors.textTertiary),
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         // A SwitchListTile paints its background/ink on the

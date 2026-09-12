@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import 'package:careeros/app/app.dart';
 import 'package:careeros/providers/app_providers.dart';
+import 'package:careeros/providers/theme_controller.dart';
 import 'package:careeros/core/network/api_client.dart';
 import 'package:careeros/core/storage/token_storage.dart';
 import 'package:careeros/repositories/careeros_repository.dart';
@@ -30,6 +31,7 @@ void main() {
           ChangeNotifierProvider(create: AuthProvider.create),
           ChangeNotifierProvider(create: CareerDataProvider.create),
           ChangeNotifierProvider(create: (_) => AvatarController()),
+          ChangeNotifierProvider(create: (_) => ThemeController()),
         ],
         child: const CareerOSApp(),
       ),

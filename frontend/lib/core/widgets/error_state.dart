@@ -10,7 +10,7 @@ class ErrorState extends StatelessWidget {
   final String? secondaryActionLabel;
   final VoidCallback? onSecondaryAction;
   final IconData icon;
-  final Color iconColor;
+  final Color? iconColor;
   final EdgeInsetsGeometry padding;
 
   const ErrorState({
@@ -22,12 +22,13 @@ class ErrorState extends StatelessWidget {
     this.secondaryActionLabel,
     this.onSecondaryAction,
     this.icon = Icons.error_outline_rounded,
-    this.iconColor = AppColors.danger,
+    this.iconColor,
     this.padding = AppSpacing.xxlAll,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveIconColor = iconColor ?? AppColors.danger;
     return Padding(
       padding: padding,
       child: Column(
@@ -37,10 +38,10 @@ class ErrorState extends StatelessWidget {
             width: 96,
             height: 96,
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.15),
+              color: effectiveIconColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(48),
             ),
-            child: Center(child: Icon(icon, size: 48, color: iconColor)),
+            child: Center(child: Icon(icon, size: 48, color: effectiveIconColor)),
           ),
           const SizedBox(height: AppSpacing.xl),
           Text(title, style: AppTypography.headlineSmall, textAlign: TextAlign.center),
@@ -139,8 +140,8 @@ class ErrorBanner extends StatelessWidget {
   final VoidCallback? onDismiss;
   final VoidCallback? onAction;
   final String? actionLabel;
-  final Color backgroundColor;
-  final Color textColor;
+  final Color? backgroundColor;
+  final Color? textColor;
   final IconData icon;
 
   const ErrorBanner({
@@ -149,33 +150,35 @@ class ErrorBanner extends StatelessWidget {
     this.onDismiss,
     this.onAction,
     this.actionLabel,
-    this.backgroundColor = AppColors.dangerContainer,
-    this.textColor = AppColors.onDangerContainer,
+    this.backgroundColor,
+    this.textColor,
     this.icon = Icons.error_outline_rounded,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = backgroundColor ?? AppColors.dangerContainer;
+    final fgColor = textColor ?? AppColors.onDangerContainer;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: bgColor,
         borderRadius: AppRadii.card,
-        border: Border.all(color: backgroundColor.withValues(alpha: 0.5)),
+        border: Border.all(color: bgColor.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: textColor, size: 20),
+          Icon(icon, color: fgColor, size: 20),
           const SizedBox(width: AppSpacing.md),
-          Expanded(child: Text(message, style: AppTypography.bodyMedium.copyWith(color: textColor))),
+          Expanded(child: Text(message, style: AppTypography.bodyMedium.copyWith(color: fgColor))),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(width: AppSpacing.md),
-            TextButton(onPressed: onAction, child: Text(actionLabel!, style: AppTypography.labelMedium.copyWith(color: textColor))),
+            TextButton(onPressed: onAction, child: Text(actionLabel!, style: AppTypography.labelMedium.copyWith(color: fgColor))),
           ],
           if (onDismiss != null) ...[
             const SizedBox(width: AppSpacing.sm),
             IconButton(
-              icon: Icon(Icons.close, color: textColor, size: 20),
+              icon: Icon(Icons.close, color: fgColor, size: 20),
               onPressed: onDismiss,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),

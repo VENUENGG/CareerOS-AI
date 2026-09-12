@@ -102,14 +102,14 @@ class HeroPanel extends StatelessWidget {
   final Widget child;
   final Gradient? gradient;
   final EdgeInsetsGeometry padding;
-  final Color borderColor;
+  final Color? borderColor;
 
   const HeroPanel({
     super.key,
     required this.child,
     this.gradient,
     this.padding = AppSpacing.xxlAll,
-    this.borderColor = AppColors.borderStrong,
+    this.borderColor,
   });
 
   @override
@@ -124,7 +124,7 @@ class HeroPanel extends StatelessWidget {
               colors: [AppColors.primaryContainer.withValues(alpha: 0.65), AppColors.surfaceElevated],
             ),
         borderRadius: AppRadii.card,
-        border: Border.all(color: borderColor, width: 0.5),
+        border: Border.all(color: borderColor ?? AppColors.borderStrong, width: 0.5),
         boxShadow: AppElevation.level2,
       ),
       child: child,
