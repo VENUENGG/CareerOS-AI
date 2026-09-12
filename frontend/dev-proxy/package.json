@@ -1,0 +1,13 @@
+{
+  "name": "careeros-dev-proxy",
+  "version": "1.0.0",
+  "description": "Frontend development proxy for CareerOS - serves Flutter Web and proxies /api/* to backend",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "http-proxy-middleware": "^2.0.6"
+  }
+}
