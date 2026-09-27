@@ -8,6 +8,7 @@ import '../screens/auth/auth_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/legal/legal_content.dart';
 import '../screens/legal/legal_page_screen.dart';
+import '../screens/profile/item_editor_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/resume/resume_screen.dart';
 import '../screens/resume/resume_viewer_screen.dart';
@@ -48,7 +49,25 @@ GoRouter createRouter(AuthProvider auth) {
         ),
         routes: [
           GoRoute(path: '/', builder: (_, __) => const DashboardScreen()),
-          GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+          GoRoute(
+            path: '/profile',
+            builder: (_, __) => const ProfileScreen(),
+            routes: [
+              // One shared section-editor route per career-data section. The
+              // editor is driven entirely by `SectionEditorSpec`, so these six
+              // routes are declarative; the optional `edit` query parameter
+              // deep-links straight into editing one specific entry.
+              for (final spec in sectionEditorSpecs.values)
+                GoRoute(
+                  path: spec.section.apiPath.split('/').last,
+                  builder: (context, state) => SectionEditorScreen(
+                    spec: spec,
+                    initialEditId:
+                        int.tryParse(state.uri.queryParameters['edit'] ?? ''),
+                  ),
+                ),
+            ],
+          ),
           GoRoute(
             path: '/resume',
             builder: (_, __) => const ResumeScreen(),

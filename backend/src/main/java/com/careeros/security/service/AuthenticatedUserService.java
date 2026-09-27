@@ -20,9 +20,9 @@ public class AuthenticatedUserService {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
 
-        String email = authentication.getName();
+        System.out.println("Authenticated Principal = " + authentication.getName());
 
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() ->
                         new RuntimeException("Authenticated user not found."));
     }

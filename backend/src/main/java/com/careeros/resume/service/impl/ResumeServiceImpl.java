@@ -9,6 +9,7 @@ import com.careeros.resume.mapper.ResumeMapper;
 import com.careeros.resume.repository.ResumeRepository;
 import com.careeros.resume.service.ResumeService;
 import com.careeros.security.service.AuthenticatedUserService;
+import com.careeros.template.service.TemplateService;
 import com.careeros.user.entity.User;
 import com.careeros.user.entity.UserProfile;
 import com.careeros.user.repository.UserProfileRepository;
@@ -24,15 +25,18 @@ public class ResumeServiceImpl implements ResumeService {
     private final ResumeRepository resumeRepository;
     private final UserProfileRepository userProfileRepository;
     private final AuthenticatedUserService authenticatedUserService;
+    private final TemplateService templateService;
 
     public ResumeServiceImpl(
             ResumeRepository resumeRepository,
             UserProfileRepository userProfileRepository,
-            AuthenticatedUserService authenticatedUserService
+            AuthenticatedUserService authenticatedUserService,
+            TemplateService templateService
     ) {
         this.resumeRepository = resumeRepository;
         this.userProfileRepository = userProfileRepository;
         this.authenticatedUserService = authenticatedUserService;
+        this.templateService = templateService;
     }
 
     private UserProfile getCurrentUserProfile() {
@@ -47,6 +51,7 @@ public class ResumeServiceImpl implements ResumeService {
                         )
                 );
     }
+
     @Override
     public ResumeResponse createResume(
             ResumeRequest request
@@ -73,9 +78,11 @@ public class ResumeServiceImpl implements ResumeService {
     @Transactional(readOnly = true)
     public List<ResumeResponse> getMyResumes() {
 
-        UserProfile userProfile = getCurrentUserProfile();
+        UserProfile userProfile =
+                getCurrentUserProfile();
 
-        return resumeRepository.findByUserProfile(userProfile)
+        return resumeRepository
+                .findByUserProfile(userProfile)
                 .stream()
                 .map(ResumeMapper::mapEntityToResponse)
                 .toList();
@@ -87,10 +94,14 @@ public class ResumeServiceImpl implements ResumeService {
             Long id
     ) {
 
-        UserProfile userProfile = getCurrentUserProfile();
+        UserProfile userProfile =
+                getCurrentUserProfile();
 
         Resume resume = resumeRepository
-                .findByIdAndUserProfile(id, userProfile)
+                .findByIdAndUserProfile(
+                        id,
+                        userProfile
+                )
                 .orElseThrow(() ->
                         new ResumeNotFoundException(
                                 "Resume not found."
@@ -106,10 +117,14 @@ public class ResumeServiceImpl implements ResumeService {
             ResumeRequest request
     ) {
 
-        UserProfile userProfile = getCurrentUserProfile();
+        UserProfile userProfile =
+                getCurrentUserProfile();
 
         Resume resume = resumeRepository
-                .findByIdAndUserProfile(id, userProfile)
+                .findByIdAndUserProfile(
+                        id,
+                        userProfile
+                )
                 .orElseThrow(() ->
                         new ResumeNotFoundException(
                                 "Resume not found."
@@ -124,7 +139,9 @@ public class ResumeServiceImpl implements ResumeService {
         Resume updatedResume =
                 resumeRepository.save(resume);
 
-        return ResumeMapper.mapEntityToResponse(updatedResume);
+        return ResumeMapper.mapEntityToResponse(
+                updatedResume
+        );
     }
 
     @Override
@@ -132,10 +149,14 @@ public class ResumeServiceImpl implements ResumeService {
             Long id
     ) {
 
-        UserProfile userProfile = getCurrentUserProfile();
+        UserProfile userProfile =
+                getCurrentUserProfile();
 
         Resume resume = resumeRepository
-                .findByIdAndUserProfile(id, userProfile)
+                .findByIdAndUserProfile(
+                        id,
+                        userProfile
+                )
                 .orElseThrow(() ->
                         new ResumeNotFoundException(
                                 "Resume not found."
@@ -143,5 +164,28 @@ public class ResumeServiceImpl implements ResumeService {
                 );
 
         resumeRepository.delete(resume);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String generateResumeHtml(
+            Long id
+    ) {
+
+        UserProfile userProfile =
+                getCurrentUserProfile();
+
+        resumeRepository
+                .findByIdAndUserProfile(
+                        id,
+                        userProfile
+                )
+                .orElseThrow(() ->
+                        new ResumeNotFoundException(
+                                "Resume not found."
+                        )
+                );
+
+        return templateService.generateResumeHtml(id);
     }
 }

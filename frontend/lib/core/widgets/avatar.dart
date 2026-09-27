@@ -41,75 +41,17 @@ class AppAvatar extends StatelessWidget {
   }
 
   Widget _buildFallbackAvatar(AvatarStyle style, double radius) {
-    switch (style) {
-      case AvatarStyle.initials:
-        return Text(
-          initials?.isNotEmpty == true ? initials! : '?',
-          style: AppTypography.titleMedium.primary().copyWith(fontSize: radius * 0.7),
-        );
-      case AvatarStyle.bot:
-        return _buildBotAvatar(radius);
-      case AvatarStyle.astronaut:
-        return _buildAstronautAvatar(radius);
-      case AvatarStyle.rocket:
-        return _buildRocketAvatar(radius);
-      case AvatarStyle.star:
-        return _buildStarAvatar(radius);
-      case AvatarStyle.gear:
-        return _buildGearAvatar(radius);
-      case AvatarStyle.sparkles:
-        return _buildSparklesAvatar(radius);
-      case AvatarStyle.crown:
-        return _buildCrownAvatar(radius);
+    if (style == AvatarStyle.initials) {
+      return Text(
+        initials?.isNotEmpty == true ? initials! : '?',
+        style: AppTypography.titleMedium.primary().copyWith(fontSize: radius * 0.7),
+      );
     }
-  }
-
-  Widget _buildBotAvatar(double radius) {
-    return CustomPaint(
-      size: Size(radius * 2, radius * 2),
-      painter: _BotAvatarPainter(radius: radius, color: AppColors.primary),
-    );
-  }
-
-  Widget _buildAstronautAvatar(double radius) {
-    return CustomPaint(
-      size: Size(radius * 2, radius * 2),
-      painter: _AstronautAvatarPainter(radius: radius, color: AppColors.primary),
-    );
-  }
-
-  Widget _buildRocketAvatar(double radius) {
-    return CustomPaint(
-      size: Size(radius * 2, radius * 2),
-      painter: _RocketAvatarPainter(radius: radius, color: AppColors.primary),
-    );
-  }
-
-  Widget _buildStarAvatar(double radius) {
-    return CustomPaint(
-      size: Size(radius * 2, radius * 2),
-      painter: _StarAvatarPainter(radius: radius, color: AppColors.primary),
-    );
-  }
-
-  Widget _buildGearAvatar(double radius) {
-    return CustomPaint(
-      size: Size(radius * 2, radius * 2),
-      painter: _GearAvatarPainter(radius: radius, color: AppColors.primary),
-    );
-  }
-
-  Widget _buildSparklesAvatar(double radius) {
-    return CustomPaint(
-      size: Size(radius * 2, radius * 2),
-      painter: _SparklesAvatarPainter(radius: radius, color: AppColors.primary),
-    );
-  }
-
-  Widget _buildCrownAvatar(double radius) {
-    return CustomPaint(
-      size: Size(radius * 2, radius * 2),
-      painter: _CrownAvatarPainter(radius: radius, color: AppColors.primary),
+    return ClipOval(
+      child: CustomPaint(
+        size: Size(radius * 2, radius * 2),
+        painter: _GeometricAvatarPainter(style: style),
+      ),
     );
   }
 }
@@ -240,436 +182,204 @@ class _AvatarOption extends StatelessWidget {
   }
 }
 
+/// A cohesive set of abstract, geometric identity marks -- the deliberate
+/// replacement for the previous literal-object set (bot/astronaut/rocket/
+/// star/gear/sparkles/crown), which read as generic clip-art rather than a
+/// premium product's avatar system. Each style below is a distinct abstract
+/// composition (faceted forms, layered arcs, concentric rings, etc.) with
+/// its own fixed, curated color pairing -- fixed rather than theme-derived
+/// so a chosen avatar is a stable identity marker independent of light/dark
+/// mode, and so avatars stop being uniformly purple across the app.
 enum AvatarStyle {
   initials('Initials'),
-  bot('Bot'),
-  astronaut('Astronaut'),
-  rocket('Rocket'),
-  star('Star'),
-  gear('Gear'),
-  sparkles('Sparkles'),
-  crown('Crown');
+  prism('Prism'),
+  aurora('Aurora'),
+  horizon('Horizon'),
+  facet('Facet'),
+  nebula('Nebula'),
+  monolith('Monolith'),
+  orbit('Orbit'),
+  lattice('Lattice');
 
   const AvatarStyle(this.displayName);
   final String displayName;
 }
 
-class _BotAvatarPainter extends CustomPainter {
-  final double radius;
-  final Color color;
+class _GeometricAvatarPainter extends CustomPainter {
+  final AvatarStyle style;
 
-  _BotAvatarPainter({required this.radius, required this.color});
+  const _GeometricAvatarPainter({required this.style});
+
+  static const Map<AvatarStyle, List<Color>> _palettes = {
+    AvatarStyle.prism: [Color(0xFF4F3BB8), Color(0xFF7C5CFF), Color(0xFFB09BFF)],
+    AvatarStyle.aurora: [Color(0xFF0E7C66), Color(0xFF10B981), Color(0xFF6EE7C4)],
+    AvatarStyle.horizon: [Color(0xFFB4530F), Color(0xFFF59E0B), Color(0xFFFFD98E)],
+    AvatarStyle.facet: [Color(0xFF334155), Color(0xFF64748B), Color(0xFFB6C2D1)],
+    AvatarStyle.nebula: [Color(0xFF6B21A8), Color(0xFFB44FD8), Color(0xFFE8B8FF)],
+    AvatarStyle.monolith: [Color(0xFF1E2430), Color(0xFF3A4152), Color(0xFF8891A3)],
+    AvatarStyle.orbit: [Color(0xFF0E5FA8), Color(0xFF3B82F6), Color(0xFF93C5FD)],
+    AvatarStyle.lattice: [Color(0xFF14532D), Color(0xFF3F8F4F), Color(0xFF9BD9A6)],
+  };
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final scale = radius / 36.0;
-    final headPaint = Paint()
-      ..shader = const LinearGradient(
+    final colors = _palettes[style] ?? _palettes[AvatarStyle.prism]!;
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final center = rect.center;
+    final r = size.width / 2;
+
+    // Every style shares a soft diagonal backdrop wash in its own palette so
+    // the set reads as one family, then layers a distinct motif on top.
+    final backdrop = Paint()
+      ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xFF7C5CFF), Color(0xFF8B5CF6), Color(0xFF6366F1)],
-      ).createShader(Rect.fromLTWH(0, 0, 36 * scale, 36 * scale))
-      ..style = PaintingStyle.fill;
-    final accentPaint = Paint()
-      ..color = const Color(0xFF10B981)
-      ..style = PaintingStyle.fill;
+        colors: [colors[0], colors[1]],
+      ).createShader(rect);
+    canvas.drawRect(rect, backdrop);
 
-    canvas.save();
-    canvas.translate(center.dx - 18 * scale, center.dy - 18 * scale);
-    canvas.scale(scale);
+    switch (style) {
+      case AvatarStyle.initials:
+        break;
+      case AvatarStyle.prism:
+        _paintPrism(canvas, center, r, colors);
+      case AvatarStyle.aurora:
+        _paintAurora(canvas, center, r, colors);
+      case AvatarStyle.horizon:
+        _paintHorizon(canvas, rect, r, colors);
+      case AvatarStyle.facet:
+        _paintFacet(canvas, center, r, colors);
+      case AvatarStyle.nebula:
+        _paintNebula(canvas, center, r, colors);
+      case AvatarStyle.monolith:
+        _paintMonolith(canvas, rect, r, colors);
+      case AvatarStyle.orbit:
+        _paintOrbit(canvas, center, r, colors);
+      case AvatarStyle.lattice:
+        _paintLattice(canvas, rect, r, colors);
+    }
+  }
 
-    final headRect = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(4, 2, 28, 22),
-      const Radius.circular(4),
+  void _paintPrism(Canvas canvas, Offset c, double r, List<Color> colors) {
+    // Three overlapping angular facets fanning from the center, each a
+    // translucent tint of the palette's lightest tone.
+    for (var i = 0; i < 3; i++) {
+      final angle = -math.pi / 2 + i * (2 * math.pi / 3);
+      final path = Path()
+        ..moveTo(c.dx, c.dy)
+        ..lineTo(c.dx + r * 1.1 * math.cos(angle - 0.5), c.dy + r * 1.1 * math.sin(angle - 0.5))
+        ..lineTo(c.dx + r * 1.1 * math.cos(angle + 0.5), c.dy + r * 1.1 * math.sin(angle + 0.5))
+        ..close();
+      canvas.drawPath(path, Paint()..color = colors[2].withValues(alpha: 0.28 + i * 0.1));
+    }
+  }
+
+  void _paintAurora(Canvas canvas, Offset c, double r, List<Color> colors) {
+    // Soft overlapping radial blooms -- a flowing, weightless gradient
+    // composition rather than a hard shape.
+    final blooms = [
+      (Offset(c.dx - r * 0.3, c.dy - r * 0.2), r * 0.75),
+      (Offset(c.dx + r * 0.35, c.dy + r * 0.1), r * 0.65),
+      (Offset(c.dx - r * 0.1, c.dy + r * 0.4), r * 0.5),
+    ];
+    for (final (pos, radius) in blooms) {
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [colors[2].withValues(alpha: 0.55), colors[2].withValues(alpha: 0.0)],
+        ).createShader(Rect.fromCircle(center: pos, radius: radius));
+      canvas.drawCircle(pos, radius, paint);
+    }
+  }
+
+  void _paintHorizon(Canvas canvas, Rect rect, double r, List<Color> colors) {
+    // Layered horizon bands rising from the bottom edge, like sunrise light.
+    final c = rect.center;
+    canvas.drawCircle(Offset(c.dx, c.dy - r * 0.15), r * 0.28, Paint()..color = colors[2].withValues(alpha: 0.9));
+    for (var i = 0; i < 3; i++) {
+      final bandTop = c.dy + r * (0.15 + i * 0.35);
+      final band = Rect.fromLTRB(rect.left, bandTop, rect.right, rect.bottom);
+      canvas.drawRect(band, Paint()..color = colors[0].withValues(alpha: 0.35 - i * 0.08));
+    }
+  }
+
+  void _paintFacet(Canvas canvas, Offset c, double r, List<Color> colors) {
+    // A faceted gem: a diamond split into shaded triangular panels.
+    final top = Offset(c.dx, c.dy - r * 0.85);
+    final bottom = Offset(c.dx, c.dy + r * 0.85);
+    final left = Offset(c.dx - r * 0.75, c.dy - r * 0.1);
+    final right = Offset(c.dx + r * 0.75, c.dy - r * 0.1);
+    final mid = Offset(c.dx, c.dy + r * 0.15);
+
+    void tri(Offset a, Offset b, Offset cc, double alpha) {
+      canvas.drawPath(Path()..moveTo(a.dx, a.dy)..lineTo(b.dx, b.dy)..lineTo(cc.dx, cc.dy)..close(), Paint()..color = colors[2].withValues(alpha: alpha));
+    }
+
+    tri(top, left, mid, 0.55);
+    tri(top, right, mid, 0.35);
+    tri(left, mid, bottom, 0.45);
+    tri(right, mid, bottom, 0.25);
+  }
+
+  void _paintNebula(Canvas canvas, Offset c, double r, List<Color> colors) {
+    // A scattered cluster of soft circles, varying size -- restrained, not
+    // busy: five elements, gentle overlap.
+    final specks = [
+      (Offset(c.dx - r * 0.35, c.dy - r * 0.3), r * 0.32),
+      (Offset(c.dx + r * 0.25, c.dy - r * 0.4), r * 0.2),
+      (Offset(c.dx + r * 0.4, c.dy + r * 0.2), r * 0.28),
+      (Offset(c.dx - r * 0.15, c.dy + r * 0.4), r * 0.22),
+      (Offset(c.dx + r * 0.05, c.dy - r * 0.05), r * 0.16),
+    ];
+    for (final (pos, radius) in specks) {
+      canvas.drawCircle(pos, radius, Paint()..color = colors[2].withValues(alpha: 0.5));
+    }
+  }
+
+  void _paintMonolith(Canvas canvas, Rect rect, double r, List<Color> colors) {
+    // Two Bauhaus-style vertical bars of differing height plus one thin
+    // accent line -- quiet, structural, confident.
+    final c = rect.center;
+    final barW = r * 0.34;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(c.dx - r * 0.55, c.dy - r * 0.5, barW, r * 1.05), const Radius.circular(3)),
+      Paint()..color = colors[2].withValues(alpha: 0.85),
     );
-    canvas.drawRRect(headRect, headPaint);
-
-    final eyePaint = Paint()..color = Colors.white;
-    canvas.drawCircle(const Offset(12, 12), 2.5, eyePaint);
-    canvas.drawCircle(const Offset(24, 12), 2.5, eyePaint);
-
-    final antennaPaint = Paint()..color = const Color(0xFF7C5CFF)..strokeWidth = 2..style = PaintingStyle.stroke;
-    canvas.drawLine(const Offset(12, 2), const Offset(12, -6), antennaPaint);
-    canvas.drawCircle(const Offset(12, -8), 2, accentPaint);
-
-    final bodyRect = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(6, 26, 24, 18),
-      const Radius.circular(3),
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(c.dx + r * 0.05, c.dy - r * 0.75, barW, r * 1.4), const Radius.circular(3)),
+      Paint()..color = colors[2].withValues(alpha: 0.5),
     );
-    canvas.drawRRect(bodyRect, headPaint);
-
-    final armPaint = Paint()..color = const Color(0xFF7C5CFF)..strokeWidth = 3..style = PaintingStyle.stroke;
-    canvas.drawLine(const Offset(4, 30), const Offset(-2, 38), armPaint);
-    canvas.drawLine(const Offset(32, 30), const Offset(38, 38), armPaint);
-
-    canvas.drawLine(const Offset(12, 44), const Offset(12, 52), Paint()..color = const Color(0xFF7C5CFF)..strokeWidth = 3);
-    canvas.drawLine(const Offset(24, 44), const Offset(24, 52), Paint()..color = const Color(0xFF7C5CFF)..strokeWidth = 3);
-
-    canvas.restore();
+    canvas.drawRect(Rect.fromLTWH(rect.left, c.dy + r * 0.62, rect.width, r * 0.06), Paint()..color = colors[2].withValues(alpha: 0.9));
   }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _AstronautAvatarPainter extends CustomPainter {
-  final double radius;
-  final Color color;
-
-  _AstronautAvatarPainter({required this.radius, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final scale = radius / 36.0;
-    final helmetPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF7C5CFF), Color(0xFF8B5CF6)],
-      ).createShader(Rect.fromLTWH(0, 0, 36 * scale, 36 * scale))
-      ..style = PaintingStyle.fill;
-    final visorPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
-      ).createShader(Rect.fromLTWH(8 * scale, 8 * scale, 20 * scale, 22 * scale))
-      ..style = PaintingStyle.fill;
-
-    canvas.save();
-    canvas.translate(center.dx - 18 * scale, center.dy - 18 * scale);
-    canvas.scale(scale);
-
-    final helmetPath = Path()
-      ..moveTo(18, 2)
-      ..quadraticBezierTo(34, 2, 34, 16)
-      ..lineTo(34, 28)
-      ..quadraticBezierTo(34, 34, 18, 34)
-      ..quadraticBezierTo(2, 34, 2, 28)
-      ..lineTo(2, 16)
-      ..quadraticBezierTo(2, 2, 18, 2)
-      ..close();
-    canvas.drawPath(helmetPath, helmetPaint);
-
-    final visorPath = Path()
-      ..moveTo(18, 8)
-      ..quadraticBezierTo(28, 8, 28, 18)
-      ..lineTo(28, 26)
-      ..quadraticBezierTo(28, 30, 18, 30)
-      ..quadraticBezierTo(8, 30, 8, 26)
-      ..lineTo(8, 18)
-      ..quadraticBezierTo(8, 8, 18, 8)
-      ..close();
-    canvas.drawPath(visorPath, visorPaint);
-
-    final badgePaint = Paint()..color = const Color(0xFFF59E0B)..style = PaintingStyle.fill;
-    canvas.drawCircle(const Offset(28, 10), 4, badgePaint);
-
-    final bodyPaint = Paint()..color = const Color(0xFF7C5CFF)..strokeWidth = 3..style = PaintingStyle.stroke;
-    canvas.drawLine(const Offset(18, 34), const Offset(18, 42), bodyPaint);
-    canvas.drawLine(const Offset(18, 38), const Offset(10, 46), bodyPaint);
-    canvas.drawLine(const Offset(18, 38), const Offset(26, 46), bodyPaint);
-    canvas.drawLine(const Offset(18, 42), const Offset(12, 50), bodyPaint);
-    canvas.drawLine(const Offset(18, 42), const Offset(24, 50), bodyPaint);
-
-    canvas.restore();
+  void _paintOrbit(Canvas canvas, Offset c, double r, List<Color> colors) {
+    // Three concentric, slightly offset rings plus a single orbiting dot.
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final radii = [r * 0.85, r * 0.6, r * 0.35];
+    for (var i = 0; i < radii.length; i++) {
+      canvas.drawCircle(c, radii[i], ringPaint..color = colors[2].withValues(alpha: 0.55 - i * 0.12)..strokeWidth = r * 0.06);
+    }
+    final dotAngle = -math.pi / 4;
+    canvas.drawCircle(Offset(c.dx + radii[0] * math.cos(dotAngle), c.dy + radii[0] * math.sin(dotAngle)), r * 0.1, Paint()..color = colors[2]);
   }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _RocketAvatarPainter extends CustomPainter {
-  final double radius;
-  final Color color;
-
-  _RocketAvatarPainter({required this.radius, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final scale = radius / 36.0;
-    final rocketPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0xFF7C5CFF), Color(0xFF8B5CF6)],
-      ).createShader(Rect.fromLTWH(0, 0, 36 * scale, 36 * scale))
-      ..style = PaintingStyle.fill;
-    final windowPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
-      ).createShader(Rect.fromLTWH(12 * scale, 10 * scale, 12 * scale, 12 * scale))
-      ..style = PaintingStyle.fill;
-    final flamePaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFFEF4444), Color(0xFFF87171)],
-      ).createShader(Rect.fromLTWH(0, 30 * scale, 36 * scale, 12 * scale))
-      ..style = PaintingStyle.fill;
-
-    canvas.save();
-    canvas.translate(center.dx - 18 * scale, center.dy - 18 * scale);
-    canvas.scale(scale);
-
-    final rocketPath = Path()
-      ..moveTo(18, 2)
-      ..lineTo(24, 16)
-      ..lineTo(30, 16)
-      ..lineTo(26, 8)
-      ..lineTo(34, 30)
-      ..lineTo(2, 30)
-      ..lineTo(10, 16)
-      ..lineTo(16, 16)
-      ..close();
-    canvas.drawPath(rocketPath, rocketPaint);
-
-    final windowRect = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(12, 10, 12, 12),
-      const Radius.circular(3),
-    );
-    canvas.drawRRect(windowRect, windowPaint);
-
-    final finPaint = Paint()..color = const Color(0xFF7C5CFF)..style = PaintingStyle.fill;
-    canvas.drawPath(Path()
-      ..moveTo(2, 30)
-      ..lineTo(-2, 38)
-      ..lineTo(10, 30)
-      ..close(), finPaint);
-    canvas.drawPath(Path()
-      ..moveTo(34, 30)
-      ..lineTo(38, 38)
-      ..lineTo(26, 30)
-      ..close(), finPaint);
-
-    canvas.drawPath(Path()
-      ..moveTo(10, 30)
-      ..lineTo(14, 40)
-      ..lineTo(18, 30)
-      ..close(), flamePaint);
-    canvas.drawPath(Path()
-      ..moveTo(18, 30)
-      ..lineTo(22, 42)
-      ..lineTo(26, 30)
-      ..close(), flamePaint);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _StarAvatarPainter extends CustomPainter {
-  final double radius;
-  final Color color;
-
-  _StarAvatarPainter({required this.radius, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final scale = radius / 36.0;
-    final starPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFFF59E0B), Color(0xFFFBBF24), Color(0xFFFEF08A)],
-      ).createShader(Rect.fromLTWH(-22 * scale, -22 * scale, 44 * scale, 44 * scale))
-      ..style = PaintingStyle.fill;
-    final glowPaint = Paint()
-      ..shader = const RadialGradient(
-        colors: [Color(0xFFFEF08A), Color(0xFFF59E0B), Color(0x00F59E0B)],
-        stops: [0.0, 0.5, 1.0],
-      ).createShader(Rect.fromCircle(center: Offset.zero, radius: 12 * scale))
-      ..style = PaintingStyle.fill;
-
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.scale(scale);
-
-    const outerRadius = 22.0;
-    const innerRadius = 9.0;
-    final starPath = Path()
-      ..moveTo(0, -outerRadius)
-      ..lineTo(innerRadius * math.cos(3.14159 / 5), -innerRadius * math.sin(3.14159 / 5))
-      ..lineTo(outerRadius * math.cos(2 * 3.14159 / 5 - 3.14159 / 2), outerRadius * math.sin(2 * 3.14159 / 5 - 3.14159 / 2))
-      ..lineTo(innerRadius * math.cos(3 * 3.14159 / 5 - 3.14159 / 2), innerRadius * math.sin(3 * 3.14159 / 5 - 3.14159 / 2))
-      ..lineTo(-outerRadius * math.cos(3.14159 / 5), outerRadius * math.sin(3.14159 / 5))
-      ..lineTo(-innerRadius * math.cos(3.14159 / 5), -innerRadius * math.sin(3.14159 / 5))
-      ..lineTo(-outerRadius * math.cos(2 * 3.14159 / 5 - 3.14159 / 2), -outerRadius * math.sin(2 * 3.14159 / 5 - 3.14159 / 2))
-      ..lineTo(-innerRadius * math.cos(3 * 3.14159 / 5 - 3.14159 / 2), -innerRadius * math.sin(3 * 3.14159 / 5 - 3.14159 / 2))
-      ..lineTo(innerRadius * math.cos(4 * 3.14159 / 5 - 3.14159 / 2), -innerRadius * math.sin(4 * 3.14159 / 5 - 3.14159 / 2))
-      ..lineTo(outerRadius * math.cos(3.14159 / 5), outerRadius * math.sin(3.14159 / 5))
-      ..close();
-    canvas.drawPath(starPath, starPaint);
-
-    final glowPath = Path()
-      ..addOval(Rect.fromCircle(center: Offset.zero, radius: 6));
-    canvas.drawPath(glowPath, glowPaint);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _GearAvatarPainter extends CustomPainter {
-  final double radius;
-  final Color color;
-
-  _GearAvatarPainter({required this.radius, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final scale = radius / 36.0;
-    final gearPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF7C5CFF), Color(0xFF6366F1), Color(0xFF8B5CF6)],
-      ).createShader(Rect.fromLTWH(-22 * scale, -22 * scale, 44 * scale, 44 * scale))
-      ..style = PaintingStyle.fill;
-    final holePaint = Paint()..color = AppColors.surface..style = PaintingStyle.fill;
-
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.scale(scale);
-
-    final teeth = 12;
-    final outerRadius = 22.0;
-    final innerRadius = 16.0;
-    final holeRadius = 6.0;
-
-    final gearPath = Path();
-    for (int i = 0; i < teeth * 2; i++) {
-      final angle = i * 3.14159 / teeth;
-      final r = i.isEven ? outerRadius : innerRadius;
-      final x = r * math.cos(angle);
-      final y = r * math.sin(angle);
-      if (i == 0) {
-        gearPath.moveTo(x, y);
-      } else {
-        gearPath.lineTo(x, y);
+  void _paintLattice(Canvas canvas, Rect rect, double r, List<Color> colors) {
+    // A 3x3 grid of small rounded cells with varying opacity -- an orderly,
+    // architectural pattern.
+    final c = rect.center;
+    final cell = r * 0.42;
+    final gap = r * 0.12;
+    final start = c - Offset(cell + gap, cell + gap);
+    for (var row = 0; row < 3; row++) {
+      for (var col = 0; col < 3; col++) {
+        final rr = Rect.fromLTWH(start.dx + col * (cell + gap), start.dy + row * (cell + gap), cell, cell);
+        final alpha = 0.25 + ((row + col) % 3) * 0.2;
+        canvas.drawRRect(RRect.fromRectAndRadius(rr, Radius.circular(cell * 0.28)), Paint()..color = colors[2].withValues(alpha: alpha));
       }
     }
-    gearPath.close();
-    canvas.drawPath(gearPath, gearPaint);
-
-    canvas.drawCircle(Offset.zero, holeRadius, holePaint);
-
-    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _SparklesAvatarPainter extends CustomPainter {
-  final double radius;
-  final Color color;
-
-  _SparklesAvatarPainter({required this.radius, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final scale = radius / 36.0;
-    final sparklePaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFFF59E0B), Color(0xFFFBBF24), Color(0xFFFEF08A), Color(0xFFFFFFFF)],
-      ).createShader(Rect.fromLTWH(-22 * scale, -22 * scale, 44 * scale, 44 * scale))
-      ..style = PaintingStyle.fill;
-
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.scale(scale);
-
-    _drawSparkle(canvas, sparklePaint, 0, -16, 10);
-    _drawSparkle(canvas, sparklePaint, 14, 10, 8);
-    _drawSparkle(canvas, sparklePaint, -14, 10, 8);
-    _drawSparkle(canvas, sparklePaint, -6, -4, 5);
-    _drawSparkle(canvas, sparklePaint, 8, -8, 4);
-    _drawSparkle(canvas, sparklePaint, 0, 18, 3);
-
-    canvas.restore();
-  }
-
-  void _drawSparkle(Canvas canvas, Paint paint, double cx, double cy, double size) {
-    final path = Path()
-      ..moveTo(cx, cy - size)
-      ..lineTo(cx + size * 0.3, cy - size * 0.3)
-      ..lineTo(cx + size, cy)
-      ..lineTo(cx + size * 0.3, cy + size * 0.3)
-      ..lineTo(cx, cy + size)
-      ..lineTo(cx - size * 0.3, cy + size * 0.3)
-      ..lineTo(cx - size, cy)
-      ..lineTo(cx - size * 0.3, cy - size * 0.3)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _CrownAvatarPainter extends CustomPainter {
-  final double radius;
-  final Color color;
-
-  _CrownAvatarPainter({required this.radius, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final scale = radius / 36.0;
-    final crownPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFFF59E0B), Color(0xFFFBBF24), Color(0xFFFEF08A), Color(0xFFFFFFFF)],
-      ).createShader(Rect.fromLTWH(0, 0, 36 * scale, 36 * scale))
-      ..style = PaintingStyle.fill;
-    final jewelPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
-      ).createShader(Rect.fromLTWH(0, 0, 36 * scale, 36 * scale))
-      ..style = PaintingStyle.fill;
-
-    canvas.save();
-    canvas.translate(center.dx - 18 * scale, center.dy - 18 * scale);
-    canvas.scale(scale);
-
-    final crownPath = Path()
-      ..moveTo(2, 30)
-      ..lineTo(2, 20)
-      ..quadraticBezierTo(6, 10, 10, 20)
-      ..lineTo(10, 30)
-      ..moveTo(10, 20)
-      ..quadraticBezierTo(14, 6, 18, 20)
-      ..lineTo(18, 30)
-      ..moveTo(18, 20)
-      ..quadraticBezierTo(22, 10, 26, 20)
-      ..lineTo(26, 30)
-      ..moveTo(26, 20)
-      ..quadraticBezierTo(30, 10, 34, 20)
-      ..lineTo(34, 30)
-      ..close();
-    canvas.drawPath(crownPath, crownPaint);
-
-    canvas.drawCircle(const Offset(10, 20), 3, jewelPaint);
-    canvas.drawCircle(const Offset(18, 6), 4, jewelPaint);
-    canvas.drawCircle(const Offset(26, 20), 3, jewelPaint);
-
-    final basePaint = Paint()..color = const Color(0xFFF59E0B)..style = PaintingStyle.fill;
-    canvas.drawRect(const Rect.fromLTWH(2, 30, 32, 4), basePaint);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _GeometricAvatarPainter oldDelegate) => oldDelegate.style != style;
 }

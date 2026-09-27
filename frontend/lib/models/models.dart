@@ -23,3 +23,20 @@ class SalaryCompare {double? currentSalary,expectedSalary,minimumSalary,maximumS
 class CareerCoach {String? source,careerAssessment; List<String> recommendedRoles=[],skillGaps=[],prioritySkills=[],nextActions=[]; List<RoadmapPhase> roadmap=[]; CareerCoach.fromJson(Map<String,dynamic>j){source=j['source'];careerAssessment=j['careerAssessment'];recommendedRoles=List<String>.from(j['recommendedRoles']??[]);skillGaps=List<String>.from(j['skillGaps']??[]);prioritySkills=List<String>.from(j['prioritySkills']??[]);nextActions=List<String>.from(j['nextActions']??[]);roadmap=(j['roadmap']??[]).map<RoadmapPhase>((e)=>RoadmapPhase.fromJson(e)).toList();}}
 class RoadmapPhase {int? phase;String? title,duration;List<String>skills=[];RoadmapPhase.fromJson(Map<String,dynamic>j){phase=(j['phase']as num?)?.toInt();title=j['title'];duration=j['duration'];skills=List<String>.from(j['skills']??[]);}}
 String? dateOnly(DateTime? d)=>_date(d);
+
+/// The six career-data sections the profile is built from, each backed by a
+/// REST resource that follows the same CRUD envelope (`POST`/`GET` a list,
+/// `PUT`/`DELETE` by id) -- which is what lets the profile's section editors
+/// share one generic editor screen instead of six bespoke ones.
+enum CareerSection {
+  education('/v1/education'),
+  experience('/v1/experience'),
+  skills('/v1/skills'),
+  projects('/v1/projects'),
+  certifications('/v1/certifications'),
+  languages('/v1/languages');
+
+  const CareerSection(this.apiPath);
+
+  final String apiPath;
+}

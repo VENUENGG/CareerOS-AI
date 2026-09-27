@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/design/design.dart';
+import '../../core/storage/settings_storage.dart';
 import '../../core/widgets/avatar.dart';
 import '../../core/widgets/widgets.dart';
 import '../../providers/app_providers.dart';
@@ -17,7 +19,27 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
+  bool _emailUpdatesEnabled = true;
   bool _analyticsEnabled = false;
+  bool _clearingCache = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _restorePreferences();
+  }
+
+  Future<void> _restorePreferences() async {
+    final push = await SettingsStorage.pushEnabled();
+    final email = await SettingsStorage.emailEnabled();
+    final analytics = await SettingsStorage.analyticsEnabled();
+    if (!mounted) return;
+    setState(() {
+      _notificationsEnabled = push;
+      _emailUpdatesEnabled = email;
+      _analyticsEnabled = analytics;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +144,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         subtitle: 'Receive updates and reminders',
                         trailing: Switch(
                           value: _notificationsEnabled,
-                          onChanged: (v) => setState(() => _notificationsEnabled = v),
+                          onChanged: (v) {
+                            setState(() => _notificationsEnabled = v);
+                            SettingsStorage.setPushEnabled(v);
+                          },
                           activeThumbColor: AppColors.primary,
                         ),
                       ),
@@ -131,8 +156,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: 'Email Updates',
                         subtitle: 'Receive career insights and tips via email',
                         trailing: Switch(
-                          value: _notificationsEnabled,
-                          onChanged: (v) => setState(() => _notificationsEnabled = v),
+                          value: _emailUpdatesEnabled,
+                          onChanged: (v) {
+                            setState(() => _emailUpdatesEnabled = v);
+                            SettingsStorage.setEmailEnabled(v);
+                          },
                           activeThumbColor: AppColors.primary,
                         ),
                       ),
@@ -144,15 +172,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         subtitle: 'Help improve CareerOS with anonymous usage data',
                         trailing: Switch(
                           value: _analyticsEnabled,
-                          onChanged: (v) => setState(() => _analyticsEnabled = v),
+                          onChanged: (v) {
+                            setState(() => _analyticsEnabled = v);
+                            SettingsStorage.setAnalyticsEnabled(v);
+                          },
                           activeThumbColor: AppColors.primary,
                         ),
                       ),
                       _SettingsTile(
                         icon: Icons.delete_outline_rounded,
                         title: 'Clear Cache',
-                        subtitle: 'Remove temporary files and free up space',
-                        onTap: _clearCache,
+                        subtitle: 'Reload your data from the server and free local state',
+                        onTap: _clearingCache ? null : _clearCache,
+                        trailing: _clearingCache
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : null,
                       ),
                       _SettingsTile(
                         icon: Icons.download_outlined,
@@ -291,31 +331,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _clearCache() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Cache cleared'),
-        backgroundColor: AppColors.successContainer,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: AppRadii.card),
-      ),
-    );
+  Future<void> _clearCache() async {
+    // The only local "cache" the app keeps is the in-memory career data, so
+    // clearing it means dropping the loaded lists and refetching every
+    // section from the server -- a real, useful action rather than the old
+    // "shows a toast but does nothing" stub.
+    final data = context.read<CareerDataProvider>();
+    setState(() => _clearingCache = true);
+    try {
+      await data.loadAll();
+      if (!mounted) return;
+      _showSnack(
+        data.error == null
+            ? 'Cache cleared and data refreshed'
+            : 'Data reloaded with some errors',
+        error: data.error != null,
+      );
+    } finally {
+      if (mounted) setState(() => _clearingCache = false);
+    }
   }
 
-  void _showContactSupport(BuildContext context, {required String reason}) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: AppRadii.dialog, side: BorderSide(color: AppColors.border, width: 0.5)),
-        title: Text('Contact Support', style: AppTypography.titleMedium),
-        content: Text(
-          '$reason -- reach the CareerOS team at support@careeros.app and we\'ll follow up by email.',
-          style: AppTypography.bodyMedium,
-        ),
-        actions: [
-          AppButton(label: 'OK', onPressed: () => Navigator.pop(context), size: AppButtonSize.small),
-        ],
+  Future<void> _showContactSupport(BuildContext context, {required String reason}) async {
+    // Opens the user's mail client pre-addressed to support -- the same
+    // address the legal pages and About section publish.
+    final subject = Uri.encodeComponent('CareerOS Support: $reason');
+    final body = Uri.encodeComponent('\n\n--\nSent from CareerOS AI');
+    final uri = Uri.parse('mailto:support@careeros.app?subject=$subject&body=$body');
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) {
+        _showSnack('Couldn\'t open your email app.', error: true);
+      }
+    } catch (_) {
+      if (mounted) _showSnack('Couldn\'t open your email app.', error: true);
+    }
+  }
+
+  void _showSnack(String message, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: error ? AppColors.dangerContainer : AppColors.successContainer,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.card),
       ),
     );
   }

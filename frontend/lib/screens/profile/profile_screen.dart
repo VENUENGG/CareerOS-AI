@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/design/design.dart';
 import '../../core/storage/avatar_storage.dart';
+import '../../core/utils/url_helper.dart';
 import '../../core/validation/validation.dart';
 import '../../core/widgets/avatar.dart';
 import '../../core/widgets/widgets.dart';
@@ -32,14 +34,17 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   final _githubController = TextEditingController();
   final _portfolioController = TextEditingController();
 
+  // Most-impactful sections stay expanded on first visit so the user lands
+  // on a meaningful profile, not a wall of 10 collapsed headers; secondary
+  // sections collapse and rely on the animated "Expand" affordance instead.
   final Map<String, bool> _expandedSections = {
     'identity': true,
     'professional': true,
+    'experience': true,
+    'skills': true,
     'location': false,
     'links': false,
-    'experience': false,
     'education': false,
-    'skills': false,
     'projects': false,
     'certifications': false,
     'languages': false,
@@ -182,7 +187,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
     return CustomScrollView(
       slivers: [
-        _buildAppBar(context, profile, completion),
+        _buildAppBar(context),
+        SliverToBoxAdapter(
+          child: _buildIdentityHero(context, profile, completion),
+        ),
         SliverToBoxAdapter(
           child: Padding(
             padding: AppSpacing.screenPadding,
@@ -356,7 +364,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           icon: Icons.work_outline_rounded,
           emptyMessage: 'No experience added yet',
           emptyAction: 'Add Experience',
-          onEmptyAction: () => _navigateToSection(context, 'experience'),
+          onEmptyAction: () => _openSection(CareerSection.experience),
+          onManage: () => _openSection(CareerSection.experience),
           child: _buildExperienceList(data.experience),
         ),
         _buildDataSection(
@@ -366,7 +375,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           icon: Icons.school_outlined,
           emptyMessage: 'No education added yet',
           emptyAction: 'Add Education',
-          onEmptyAction: () => _navigateToSection(context, 'education'),
+          onEmptyAction: () => _openSection(CareerSection.education),
+          onManage: () => _openSection(CareerSection.education),
           child: _buildEducationList(data.education),
         ),
         _buildDataSection(
@@ -376,7 +386,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           icon: Icons.bolt_outlined,
           emptyMessage: 'No skills added yet',
           emptyAction: 'Add Skill',
-          onEmptyAction: () => _navigateToSection(context, 'skills'),
+          onEmptyAction: () => _openSection(CareerSection.skills),
+          onManage: () => _openSection(CareerSection.skills),
           child: _buildSkillsList(data.skills),
         ),
         _buildDataSection(
@@ -386,7 +397,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           icon: Icons.code_outlined,
           emptyMessage: 'No projects added yet',
           emptyAction: 'Add Project',
-          onEmptyAction: () => _navigateToSection(context, 'projects'),
+          onEmptyAction: () => _openSection(CareerSection.projects),
+          onManage: () => _openSection(CareerSection.projects),
           child: _buildProjectsList(data.projects),
         ),
         _buildDataSection(
@@ -396,7 +408,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           icon: Icons.verified_outlined,
           emptyMessage: 'No certifications added yet',
           emptyAction: 'Add Certification',
-          onEmptyAction: () => _navigateToSection(context, 'certifications'),
+          onEmptyAction: () => _openSection(CareerSection.certifications),
+          onManage: () => _openSection(CareerSection.certifications),
           child: _buildCertificationsList(data.certifications),
         ),
         _buildDataSection(
@@ -406,94 +419,188 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           icon: Icons.language_outlined,
           emptyMessage: 'No languages added yet',
           emptyAction: 'Add Language',
-          onEmptyAction: () => _navigateToSection(context, 'languages'),
+          onEmptyAction: () => _openSection(CareerSection.languages),
+          onManage: () => _openSection(CareerSection.languages),
           child: _buildLanguagesList(data.languages),
         ),
       ],
     );
   }
 
-  Widget _buildAppBar(BuildContext context, UserProfile? profile, int completion) {
-    final avatarController = context.watch<AvatarController>();
+  // A plain, fixed-height, pinned title bar -- NOT a FlexibleSpaceBar. The
+  // avatar/name/headline/completion-chip block below it is real, unbounded
+  // profile content (a headline and job title have no length cap from the
+  // backend), and FlexibleSpaceBar forces that content into a single
+  // hand-guessed `expandedHeight`. Every guess so far has eventually been
+  // wrong for some real profile (a long headline, both chips rendering,
+  // different font metrics) and overflowed by a few pixels. Rendering that
+  // block as ordinary scrolling content instead -- sized to whatever it
+  // actually needs -- removes the whole bug class instead of re-guessing a
+  // taller number.
+  Widget _buildAppBar(BuildContext context) {
     return SliverAppBar(
-      // Avatar (88) + gaps + name + optional headline + completion chip row
-      // routinely need ~250-260px once a real profile has a headline set.
-      expandedHeight: 280,
       floating: false,
       pinned: true,
       backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
-      // Plain toolbar title (matches every other screen's SliverAppBar) --
-      // NOT flexibleSpace.title, which FlexibleSpaceBar always anchors to
-      // the bottom of the expanded space. That put it directly on top of
-      // this bar's own background content (avatar/name/completion chips),
-      // which is also bottom-anchored -- the actual cause of the header
-      // text visually colliding with the avatar block.
       title: Text('Profile', style: AppTypography.titleLarge),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: AppColors.surfaceGradient,
+    );
+  }
+
+  Widget _buildIdentityHero(BuildContext context, UserProfile? profile, int completion) {
+    final avatarController = context.watch<AvatarController>();
+    final isDark = AppColors.currentBrightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        // Distinctive tinted gradient (primary -> surface -> ai) instead of
+        // the near-invisible surfaceGradient so the hero reads as the page's
+        // focal point rather than a slightly-off shade of the background.
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primaryContainer.withValues(alpha: isDark ? 0.55 : 0.45),
+            AppColors.surface,
+            AppColors.aiContainer.withValues(alpha: isDark ? 0.3 : 0.22),
+          ],
+          stops: const [0.0, 0.6, 1.0],
+        ),
+        // Hairline seam + soft glow below the hero so it lifts off the
+        // scrolling content instead of blending into it.
+        border: Border(
+          bottom: BorderSide(color: AppColors.borderStrong.withValues(alpha: 0.8), width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: isDark ? 0.14 : 0.1),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
-          child: SafeArea(
-            child: Padding(
-              padding: AppSpacing.horizontalLg.copyWith(top: 72, bottom: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  AppAvatar(
-                    imageUrl: profile?.profilePhotoUrl,
-                    initials: avatarController.initials,
-                    radius: 44,
-                    onTap: () => _showAvatarPicker(context, profile),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    '${profile?.firstName ?? ''} ${profile?.lastName ?? ''}',
-                    style: AppTypography.headlineMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (profile?.headline != null) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(profile!.headline!, style: AppTypography.bodyMedium.muted(), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
-                  const SizedBox(height: AppSpacing.md),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-                        decoration: BoxDecoration(
-                          color: _completionColor(completion).withValues(alpha: 0.15),
-                          borderRadius: AppRadii.chip,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.favorite_rounded, size: 14, color: _completionColor(completion)),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text('Profile $completion% complete', style: AppTypography.labelSmall.copyWith(color: _completionColor(completion))),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      if (profile?.currentJobTitle != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-                          decoration: BoxDecoration(color: AppColors.surfaceElevated, borderRadius: AppRadii.chip),
-                          child: Text(profile!.currentJobTitle!, style: AppTypography.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
+        ],
+      ),
+      child: Padding(
+        padding: AppSpacing.horizontalLg.copyWith(top: AppSpacing.lg, bottom: AppSpacing.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Soft ring + glow around the avatar so it pops off the tinted hero.
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.surfaceElevated.withValues(alpha: 0.9), width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
+              child: AppAvatar(
+                imageUrl: profile?.profilePhotoUrl,
+                initials: avatarController.initials,
+                radius: 44,
+                onTap: () => _showAvatarPicker(context, profile),
+              ),
             ),
-          ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              '${profile?.firstName ?? ''} ${profile?.lastName ?? ''}',
+              style: AppTypography.headlineMedium.copyWith(color: AppColors.textPrimary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (profile?.headline != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(profile!.headline!, style: AppTypography.bodyMedium.muted(), maxLines: 2, overflow: TextOverflow.ellipsis),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                  decoration: BoxDecoration(
+                    color: _completionColor(completion).withValues(alpha: 0.15),
+                    borderRadius: AppRadii.chip,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.favorite_rounded, size: 14, color: _completionColor(completion)),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text('Profile $completion% complete', style: AppTypography.labelSmall.copyWith(color: _completionColor(completion))),
+                    ],
+                  ),
+                ),
+                if (profile?.currentJobTitle != null)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 260),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                      decoration: BoxDecoration(color: AppColors.surfaceElevated, borderRadius: AppRadii.chip),
+                      child: Text(profile!.currentJobTitle!, style: AppTypography.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (_hasSocialLinks(profile))
+              _buildSocialLinksRow(profile!),
+          ],
         ),
       ),
+    );
+  }
+
+  bool _hasSocialLinks(UserProfile? profile) {
+    return (profile?.linkedinUrl?.isNotEmpty ?? false) ||
+        (profile?.githubUrl?.isNotEmpty ?? false) ||
+        (profile?.portfolioUrl?.isNotEmpty ?? false);
+  }
+
+  Widget _buildSocialLinksRow(UserProfile profile) {
+    final links = <Widget>[];
+    
+    if (profile.linkedinUrl?.isNotEmpty ?? false) {
+      links.add(_SocialLinkButton(
+        icon: Icons.work_outline_rounded,
+        url: profile.linkedinUrl!,
+        color: const Color(0xFF0077B5),
+      ));
+    }
+    
+    if (profile.githubUrl?.isNotEmpty ?? false) {
+      links.add(_SocialLinkButton(
+        icon: Icons.code_outlined,
+        url: profile.githubUrl!,
+        // GitHub's brand mark is near-black, which vanishes on dark surfaces;
+        // switch to GitHub's light signature gray when the app is in dark mode.
+        color: AppColors.currentBrightness == Brightness.dark
+            ? const Color(0xFFE6EDF3)
+            : const Color(0xFF333333),
+      ));
+    }
+    
+    if (profile.portfolioUrl?.isNotEmpty ?? false) {
+      links.add(_SocialLinkButton(
+        icon: Icons.web_outlined,
+        url: profile.portfolioUrl!,
+        color: AppColors.primary,
+      ));
+    }
+    
+    if (links.isEmpty) return const SizedBox.shrink();
+    
+    return Row(
+      spacing: AppSpacing.sm,
+      children: links,
     );
   }
 
@@ -624,16 +731,44 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             Pressable(
               onTap: () => _toggleSection(key),
               borderRadius: AppRadii.card,
-              child: Padding(
+              child: AnimatedContainer(
+                duration: AppMotion.fast,
+                curve: AppMotion.standard,
                 padding: AppSpacing.cardPadding,
+                decoration: BoxDecoration(
+                  // A soft interactive tint on collapsed headers signals the
+                  // whole row is tappable before the user reads the label.
+                  color: expanded ? Colors.transparent : AppColors.surfaceInteractive.withValues(alpha: 0.55),
+                  borderRadius: AppRadii.card,
+                ),
                 child: SectionHeader(
                   icon: icon,
                   title: title,
                   subtitle: subtitle,
-                  trailing: AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: AppMotion.fast,
-                    child: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textTertiary, size: 24),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedSwitcher(
+                        duration: AppMotion.fast,
+                        child: Text(
+                          expanded ? 'Collapse' : 'Expand',
+                          key: ValueKey(expanded),
+                          style: AppTypography.labelSmall.copyWith(
+                            color: expanded ? AppColors.textTertiary : AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      AnimatedRotation(
+                        turns: expanded ? 0.5 : 0,
+                        duration: AppMotion.fast,
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: expanded ? AppColors.textTertiary : AppColors.primary,
+                          size: 24,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -664,6 +799,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     required String emptyMessage,
     required String emptyAction,
     required VoidCallback onEmptyAction,
+    required VoidCallback onManage,
     required Widget child,
   }) {
     final expanded = _expandedSections[key] ?? false;
@@ -676,19 +812,71 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             Pressable(
               onTap: () => _toggleSection(key),
               borderRadius: AppRadii.card,
-              child: Padding(
+              child: AnimatedContainer(
+                duration: AppMotion.fast,
+                curve: AppMotion.standard,
                 padding: AppSpacing.cardPadding,
+                decoration: BoxDecoration(
+                  color: expanded ? Colors.transparent : AppColors.surfaceInteractive.withValues(alpha: 0.55),
+                  borderRadius: AppRadii.card,
+                ),
                 child: SectionHeader(
                   icon: icon,
                   title: title,
                   subtitle: subtitle,
                   iconColor: AppColors.textSecondary,
                   iconBackground: AppColors.surfaceElevated,
-                  trailing: AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: AppMotion.fast,
-                    child: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textTertiary, size: 24),
-                  ),
+trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Pressable(
+                            onTap: onManage,
+                            borderRadius: AppRadii.chip,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: AppSpacing.xs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryContainer.withValues(alpha: 0.5),
+                                borderRadius: AppRadii.chip,
+                              ),
+                              child: Text(
+                                'Manage',
+                                style: AppTypography.labelSmall.primary(),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Flexible(
+                          child: AnimatedSwitcher(
+                            duration: AppMotion.fast,
+                            child: Text(
+                              expanded ? 'Collapse' : 'Expand',
+                              key: ValueKey(expanded),
+                              style: AppTypography.labelSmall.copyWith(
+                                color: expanded ? AppColors.textTertiary : AppColors.primary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        AnimatedRotation(
+                          turns: expanded ? 0.5 : 0,
+                          duration: AppMotion.fast,
+                          child: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: expanded ? AppColors.textTertiary : AppColors.primary,
+                            size: 24,
+                          ),
+                        ),
+                      ],
+                    ),
                 ),
               ),
             ),
@@ -903,10 +1091,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-  void _navigateToSection(BuildContext context, String section) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$section editor coming soon'), behavior: SnackBarBehavior.floating),
-    );
+  void _openSection(CareerSection section) {
+    context.push('/profile/${section.apiPath.split('/').last}');
   }
 
   int _calculateCompletion(UserProfile? profile, CareerDataProvider data) {
@@ -1043,6 +1229,10 @@ class _ProjectTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasGithubUrl = project.githubUrl != null && project.githubUrl!.isNotEmpty;
+    final hasLiveUrl = project.liveUrl != null && project.liveUrl!.isNotEmpty;
+    final hasAnyUrl = hasGithubUrl || hasLiveUrl;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
@@ -1060,6 +1250,27 @@ class _ProjectTile extends StatelessWidget {
               children: [
                 Text(project.projectName ?? 'Unnamed Project', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
                 if (project.technologies != null) Text(project.technologies!, style: AppTypography.bodySmall.muted(), maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (hasAnyUrl) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      if (hasGithubUrl)
+                        _UrlChip(
+                          label: 'GitHub',
+                          url: project.githubUrl!,
+                          icon: Icons.code_outlined,
+                        ),
+                      if (hasLiveUrl)
+                        _UrlChip(
+                          label: 'Live Demo',
+                          url: project.liveUrl!,
+                          icon: Icons.open_in_new_rounded,
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -1076,6 +1287,8 @@ class _CertificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasCredentialUrl = certification.credentialUrl != null && certification.credentialUrl!.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
@@ -1094,6 +1307,14 @@ class _CertificationTile extends StatelessWidget {
                 Text(certification.certificationName ?? 'Certification', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
                 if (certification.issuingOrganization != null) Text(certification.issuingOrganization!, style: AppTypography.bodySmall.muted()),
                 if (certification.issueDate != null) Text('Issued: ${_formatDate(certification.issueDate!)}', style: AppTypography.caption),
+                if (hasCredentialUrl) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  _UrlChip(
+                    label: 'View Credential',
+                    url: certification.credentialUrl!,
+                    icon: Icons.open_in_new_rounded,
+                  ),
+                ],
               ],
             ),
           ),
@@ -1170,6 +1391,95 @@ class _LanguageTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SocialLinkButton extends StatelessWidget {
+  final IconData icon;
+  final String url;
+  final Color color;
+
+  const _SocialLinkButton({
+    required this.icon,
+    required this.url,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: () => UrlHelper.launch(url),
+      borderRadius: AppRadii.chip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: AppRadii.chip,
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: AppSpacing.xs),
+            Text('Open', style: AppTypography.labelSmall.copyWith(color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UrlChip extends StatelessWidget {
+  final String label;
+  final String url;
+  final IconData icon;
+
+  const _UrlChip({
+    required this.label,
+    required this.url,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: () async {
+        final success = await UrlHelper.launch(url);
+        if (!success && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not open URL: $url'),
+              backgroundColor: AppColors.danger,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+      borderRadius: AppRadii.chip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+        decoration: BoxDecoration(
+          color: AppColors.info.withValues(alpha: 0.1),
+          borderRadius: AppRadii.chip,
+          border: Border.all(color: AppColors.info.withValues(alpha: 0.3), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.info),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                color: AppColors.info,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

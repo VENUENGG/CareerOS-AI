@@ -25,4 +25,8 @@ public interface ResumeService {
     void deleteResume(
             Long id
     );
+
+    String generateResumeHtml(
+            Long id
+    );
 }

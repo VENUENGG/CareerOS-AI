@@ -50,11 +50,35 @@ public class ResumeSelectionServiceImpl implements ResumeSelectionService {
 
     private Resume getOwnedResume(Long resumeId) {
 
-        UserProfile profile = getCurrentUserProfile();
+        User currentUser = authenticatedUserService.getCurrentUser();
 
-        return resumeRepository.findByIdAndUserProfile(resumeId, profile)
+        UserProfile profile = userProfileRepository.findByUser(currentUser)
                 .orElseThrow(() ->
-                        new ResumeNotFoundException("Resume not found."));
+                        new UserProfileNotFoundException(
+                                "User profile not found."
+                        ));
+
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() ->
+                        new ResumeNotFoundException(
+                                "Resume does not exist."
+                        ));
+
+        System.out.println("================================");
+        System.out.println("CURRENT USER ID    = " + currentUser.getId());
+        System.out.println("CURRENT USER EMAIL = " + currentUser.getEmail());
+        System.out.println("CURRENT PROFILE ID = " + profile.getId());
+        System.out.println("RESUME ID          = " + resume.getId());
+        System.out.println("RESUME PROFILE ID  = " + resume.getUserProfile().getId());
+        System.out.println("================================");
+
+        if (!resume.getUserProfile().getId().equals(profile.getId())) {
+            throw new ResumeNotFoundException(
+                    "Resume does not belong to the authenticated user."
+            );
+        }
+
+        return resume;
     }
 
     @Override

@@ -146,16 +146,6 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
           elevation: 0,
           scrolledUnderElevation: 0,
           title: Text('Career AI', style: AppTypography.titleLarge),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.lg),
-              child: AppIconButton(
-                icon: const Icon(Icons.history_rounded, size: 22),
-                onPressed: () {},
-                tooltip: 'History',
-              ),
-            ),
-          ],
         ),
         SliverToBoxAdapter(
           child: Padding(

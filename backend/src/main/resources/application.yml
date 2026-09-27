@@ -3,14 +3,16 @@ spring:
     name: careeros-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/careeros_db
+    url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
@@ -23,6 +25,21 @@ logging:
     org.springframework.security: TRACE
 
 jwt:
-  secret: 7d3f2b0e6a8c1f5d9e4b7a2c8f1e6d3a9b5c7e1f4d8a2b6c9e3f7a1b5d8c2e6
+  secret: ${JWT_SECRET}
   access-token-expiration: 900000
   refresh-token-expiration: 604800000
+
+gemini:
+  api-key: ${GEMINI_API_KEY}
+
+groq:
+  api-key: ${GROQ_API_KEY}
+
+cerebras:
+  api-key: ${CEREBRAS_API_KEY}
+
+mistral:
+  api-key: ${MISTRAL_API_KEY}
+
+openrouter:
+  api-key: ${OPENROUTER_API_KEY}

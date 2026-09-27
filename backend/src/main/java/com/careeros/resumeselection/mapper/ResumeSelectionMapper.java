@@ -34,6 +34,12 @@ public class ResumeSelectionMapper {
                         : new HashSet<>(request.getExperienceIds())
         );
 
+        selection.setEducationIds(
+                request.getEducationIds() == null
+                        ? new HashSet<>()
+                        : new HashSet<>(request.getEducationIds())
+        );
+
         selection.setCertificationIds(
                 request.getCertificationIds() == null
                         ? new HashSet<>()
@@ -51,15 +57,38 @@ public class ResumeSelectionMapper {
             ResumeSelection selection
     ) {
 
-        ResumeSelectionResponse response = new ResumeSelectionResponse();
+        ResumeSelectionResponse response =
+                new ResumeSelectionResponse();
 
         response.setId(selection.getId());
-        response.setResumeId(selection.getResume().getId());
-        response.setSkillIds(new HashSet<>(selection.getSkillIds()));
-        response.setProjectIds(new HashSet<>(selection.getProjectIds()));
-        response.setExperienceIds(new HashSet<>(selection.getExperienceIds()));
-        response.setCertificationIds(new HashSet<>(selection.getCertificationIds()));
-        response.setLanguageIds(new HashSet<>(selection.getLanguageIds()));
+
+        response.setResumeId(
+                selection.getResume().getId()
+        );
+
+        response.setSkillIds(
+                new HashSet<>(selection.getSkillIds())
+        );
+
+        response.setProjectIds(
+                new HashSet<>(selection.getProjectIds())
+        );
+
+        response.setExperienceIds(
+                new HashSet<>(selection.getExperienceIds())
+        );
+
+        response.setEducationIds(
+                new HashSet<>(selection.getEducationIds())
+        );
+
+        response.setCertificationIds(
+                new HashSet<>(selection.getCertificationIds())
+        );
+
+        response.setLanguageIds(
+                new HashSet<>(selection.getLanguageIds())
+        );
 
         return response;
     }

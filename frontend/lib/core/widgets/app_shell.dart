@@ -227,7 +227,7 @@ class _MoreItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-return Pressable(
+    return Pressable(
       onTap: onTap,
       radius: AppRadii.md,
       child: Container(
@@ -239,14 +239,7 @@ return Pressable(
         margin: AppSpacing.horizontalLg.copyWith(bottom: AppSpacing.sm),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-decoration: BoxDecoration(
-          color: selected ? AppColors.primaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-        ),
-              child: Icon(icon, size: 22, color: selected ? AppColors.primary : AppColors.textSecondary),
-            ),
+            Icon(icon, size: 22, color: selected ? AppColors.primary : AppColors.textSecondary),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(

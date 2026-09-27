@@ -203,7 +203,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
     if (confirm != true) return;
 
     try {
-      await _repository.deleteById('/api/v1/resumes', id);
+      await _repository.deleteById('/v1/resumes', id);
       if (mounted) {
         await provider.loadAll();
         messenger.showSnackBar(

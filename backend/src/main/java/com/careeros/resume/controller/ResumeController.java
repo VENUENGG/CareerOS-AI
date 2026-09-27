@@ -15,9 +15,7 @@ public class ResumeController {
 
     private final ResumeService resumeService;
 
-    public ResumeController(
-            ResumeService resumeService
-    ) {
+    public ResumeController(ResumeService resumeService) {
         this.resumeService = resumeService;
     }
 
@@ -55,5 +53,12 @@ public class ResumeController {
             @PathVariable Long id
     ) {
         resumeService.deleteResume(id);
+    }
+
+    @GetMapping("/{id}/html")
+    public String generateResumeHtml(
+            @PathVariable Long id
+    ) {
+        return resumeService.generateResumeHtml(id);
     }
 }

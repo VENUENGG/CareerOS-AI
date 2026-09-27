@@ -33,6 +33,7 @@ class SectionHeader extends StatelessWidget {
     final color = iconColor ?? AppColors.primary;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           padding: const EdgeInsets.all(AppSpacing.sm),
@@ -43,9 +44,10 @@ class SectionHeader extends StatelessWidget {
           child: Icon(icon, color: color, size: 20),
         ),
         const SizedBox(width: AppSpacing.md),
-        Expanded(
+        Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(title, style: titleStyle ?? AppTypography.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
               if (subtitle != null)
@@ -55,7 +57,10 @@ class SectionHeader extends StatelessWidget {
         ),
         if (trailing != null) ...[
           const SizedBox(width: AppSpacing.sm),
-          trailing!,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 180),
+            child: trailing!,
+          ),
         ],
       ],
     );

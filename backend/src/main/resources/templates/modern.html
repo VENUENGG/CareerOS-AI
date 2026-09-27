@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+
+    <meta charset="UTF-8" />
+
+    <title th:text="${resume.title}">Java Backend Resume</title>
+
+    <link rel="stylesheet"
+          type="text/css"
+          href="/css/resume.css" />
+
+</head>
+
+<body>
+
+<!-- ========================================================= -->
+<!-- HEADER -->
+<!-- ========================================================= -->
+
+<header class="resume-header">
+
+    <h1>
+        <span th:text="${user.firstName}">Venugopal</span>
+        <span th:text="${user.lastName}">Yenagandula</span>
+    </h1>
+
+    <h3 th:text="${profile.headline}">
+        Backend Java Developer
+    </h3>
+
+    <div class="contact-info">
+
+        <span th:text="${user.email}">
+            venu@55.com
+        </span>
+
+        <span th:if="${profile.phone != null}">
+            |
+            <span th:text="${profile.phone}">
+                9876543210
+            </span>
+        </span>
+
+    </div>
+
+    <div class="location">
+
+        <span th:if="${profile.city != null}"
+              th:text="${profile.city}">
+            Bhiwandi
+        </span>
+
+        <span th:if="${profile.state != null}">
+            ,
+            <span th:text="${profile.state}">
+                Maharashtra
+            </span>
+        </span>
+
+        <span th:if="${profile.country != null}">
+            ,
+            <span th:text="${profile.country}">
+                India
+            </span>
+        </span>
+
+    </div>
+
+    <!-- SOCIAL LINKS -->
+
+    <div class="social-links"
+         th:if="${socialLinks != null}">
+
+        <a th:if="${socialLinks.githubUrl != null}"
+           th:href="${socialLinks.githubUrl}">
+            GitHub
+        </a>
+
+        <a th:if="${socialLinks.linkedinUrl != null}"
+           th:href="${socialLinks.linkedinUrl}">
+            LinkedIn
+        </a>
+
+        <a th:if="${socialLinks.portfolioUrl != null}"
+           th:href="${socialLinks.portfolioUrl}">
+            Portfolio
+        </a>
+
+        <a th:if="${socialLinks.leetcodeUrl != null}"
+           th:href="${socialLinks.leetcodeUrl}">
+            LeetCode
+        </a>
+
+    </div>
+
+</header>
+
+
+<!-- ========================================================= -->
+<!-- PROFESSIONAL SUMMARY -->
+<!-- ========================================================= -->
+
+<section th:if="${resume.professionalSummary != null}">
+
+    <h2>Professional Summary</h2>
+
+    <p th:text="${resume.professionalSummary}">
+        Backend Java Developer passionate about scalable
+        Spring Boot applications.
+    </p>
+
+</section>
+
+<hr />
+
+
+<!-- ========================================================= -->
+<!-- SKILLS -->
+<!-- ========================================================= -->
+
+<section th:if="${skills != null and !skills.isEmpty()}">
+
+    <h2>Skills</h2>
+
+    <ul>
+
+        <li th:each="skill : ${skills}">
+
+            <strong th:text="${skill.skillName}">
+                Java
+            </strong>
+
+            <span>
+                -
+                <span th:text="${skill.proficiency}">
+                    ADVANCED
+                </span>
+            </span>
+
+        </li>
+
+    </ul>
+
+</section>
+
+<hr />
+
+
+<!-- ========================================================= -->
+<!-- EXPERIENCE -->
+<!-- ========================================================= -->
+
+<section th:if="${experiences != null and !experiences.isEmpty()}">
+
+    <h2>Experience</h2>
+
+    <div th:each="experience : ${experiences}"
+         class="experience-item">
+
+        <h3 th:text="${experience.jobTitle}">
+            Backend Developer
+        </h3>
+
+        <strong th:text="${experience.companyName}">
+            CareerOS AI
+        </strong>
+
+        <p th:if="${experience.employmentType != null}"
+           th:text="${experience.employmentType}">
+            Personal Project
+        </p>
+
+        <p th:if="${experience.location != null}"
+           th:text="${experience.location}">
+            Remote
+        </p>
+
+        <p th:if="${experience.description != null}"
+           th:text="${experience.description}">
+            Building production-grade AI Career Platform.
+        </p>
+
+        <p>
+
+            <span th:text="${experience.startDate}">
+                2026-01-01
+            </span>
+
+            <span th:if="${experience.currentlyWorking}">
+                - Present
+            </span>
+
+            <span th:if="${!experience.currentlyWorking
+                          and experience.endDate != null}">
+
+                -
+
+                <span th:text="${experience.endDate}">
+                    2026-12-31
+                </span>
+
+            </span>
+
+        </p>
+
+    </div>
+
+</section>
+
+<hr />
+
+
+<!-- ========================================================= -->
+<!-- EDUCATION -->
+<!-- ========================================================= -->
+
+<section th:if="${educations != null and !educations.isEmpty()}">
+
+    <h2>Education</h2>
+
+    <div th:each="education : ${educations}"
+         class="education-item">
+
+        <h3 th:text="${education.degree}">
+            Diploma
+        </h3>
+
+        <strong th:text="${education.institutionName}">
+            Sai Shiva Education Society Muchhala Polytechnic
+        </strong>
+
+        <p th:if="${education.fieldOfStudy != null}"
+           th:text="${education.fieldOfStudy}">
+            Computer Engineering
+        </p>
+
+        <p th:if="${education.grade != null}"
+           th:text="${education.grade}">
+            8.5 CGPA
+        </p>
+
+        <p>
+
+            <span th:text="${education.startDate}">
+                2025-07-01
+            </span>
+
+            <span th:if="${education.currentlyStudying}">
+                - Present
+            </span>
+
+            <span th:if="${!education.currentlyStudying
+                          and education.endDate != null}">
+
+                -
+
+                <span th:text="${education.endDate}">
+                    2026-12-31
+                </span>
+
+            </span>
+
+        </p>
+
+        <p th:if="${education.description != null}"
+           th:text="${education.description}">
+            Direct Second Year Diploma
+        </p>
+
+    </div>
+
+</section>
+
+<hr />
+
+
+<!-- ========================================================= -->
+<!-- PROJECTS -->
+<!-- ========================================================= -->
+
+<section th:if="${projects != null and !projects.isEmpty()}">
+
+    <h2>Projects</h2>
+
+    <div th:each="project : ${projects}"
+         class="project-item">
+
+        <h3 th:text="${project.projectName}">
+            CareerOS AI
+        </h3>
+
+        <p th:if="${project.description != null}"
+           th:text="${project.description}">
+            AI-powered Career Operating System.
+        </p>
+
+        <p th:if="${project.technologies != null}">
+
+            <strong>Technologies:</strong>
+
+            <span th:text="${project.technologies}">
+                Java, Spring Boot, PostgreSQL, Flutter
+            </span>
+
+        </p>
+
+        <p th:if="${project.githubUrl != null}">
+
+            <strong>GitHub:</strong>
+
+            <a th:href="${project.githubUrl}"
+               th:text="${project.githubUrl}">
+                GitHub
+            </a>
+
+        </p>
+
+        <p th:if="${project.liveUrl != null}">
+
+            <strong>Live:</strong>
+
+            <a th:href="${project.liveUrl}"
+               th:text="${project.liveUrl}">
+                Live Project
+            </a>
+
+        </p>
+
+    </div>
+
+</section>
+
+<hr />
+
+
+<!-- ========================================================= -->
+<!-- CERTIFICATIONS -->
+<!-- ========================================================= -->
+
+<section th:if="${certifications != null and !certifications.isEmpty()}">
+
+    <h2>Certifications</h2>
+
+    <div th:each="certification : ${certifications}"
+         class="certification-item">
+
+        <h3 th:text="${certification.certificationName}">
+            Java Programming
+        </h3>
+
+        <strong th:text="${certification.issuingOrganization}">
+            Oracle
+        </strong>
+
+        <p>
+
+            <span>Issued:</span>
+
+            <span th:text="${certification.issueDate}">
+                2025-05-20
+            </span>
+
+        </p>
+
+        <p th:if="${certification.expiryDate != null}">
+
+            <span>Expires:</span>
+
+            <span th:text="${certification.expiryDate}">
+                2027-05-20
+            </span>
+
+        </p>
+
+        <p th:if="${certification.credentialId != null}">
+
+            <span>Credential ID:</span>
+
+            <span th:text="${certification.credentialId}">
+                JAVA-001
+            </span>
+
+        </p>
+
+        <p th:if="${certification.credentialUrl != null}">
+
+            <a th:href="${certification.credentialUrl}"
+               th:text="${certification.credentialUrl}">
+                Credential
+            </a>
+
+        </p>
+
+    </div>
+
+</section>
+
+<hr />
+
+
+<!-- ========================================================= -->
+<!-- LANGUAGES -->
+<!-- ========================================================= -->
+
+<section th:if="${languages != null and !languages.isEmpty()}">
+
+    <h2>Languages</h2>
+
+    <ul>
+
+        <li th:each="language : ${languages}">
+
+            <strong th:text="${language.languageName}">
+                English
+            </strong>
+
+            <span>
+                -
+                <span th:text="${language.proficiency}">
+                    Professional
+                </span>
+            </span>
+
+        </li>
+
+    </ul>
+
+</section>
+
+
+</body>
+
+</html>

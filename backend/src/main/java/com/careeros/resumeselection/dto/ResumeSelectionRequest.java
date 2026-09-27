@@ -15,6 +15,8 @@ public class ResumeSelectionRequest {
 
     private Set<Long> experienceIds;
 
+    private Set<Long> educationIds;
+
     private Set<Long> certificationIds;
 
     private Set<Long> languageIds;

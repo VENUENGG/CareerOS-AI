@@ -149,6 +149,30 @@ class CareerDataProvider extends ChangeNotifier {
   List<Language> get languages => _languages;
   List<Resume> get resumes => _resumes;
 
+  /// Test-only synchronous data injection -- lets widget tests render real
+  /// (including deliberately long/edge-case) career data without a live
+  /// backend or Dio mocking, so responsive/overflow tests can exercise the
+  /// same content-driven layouts a real profile produces.
+  @visibleForTesting
+  void debugSeed({
+    List<Education>? education,
+    List<Experience>? experience,
+    List<Skill>? skills,
+    List<Project>? projects,
+    List<Certification>? certifications,
+    List<Language>? languages,
+    List<Resume>? resumes,
+  }) {
+    if (education != null) _education = education;
+    if (experience != null) _experience = experience;
+    if (skills != null) _skills = skills;
+    if (projects != null) _projects = projects;
+    if (certifications != null) _certifications = certifications;
+    if (languages != null) _languages = languages;
+    if (resumes != null) _resumes = resumes;
+    notifyListeners();
+  }
+
   Future<void> loadAll() async {
     _loading = true;
     _error = null;
@@ -186,6 +210,32 @@ class CareerDataProvider extends ChangeNotifier {
       _error = e.toString();
       notifyListeners();
     }
+  }
+
+  /// Re-fetches a single career-data section (used by the profile's section
+  /// editors after a create/update/delete) without reloading the unrelated
+  /// lists, so a save stays cheap and the profile reflects it right away.
+  Future<void> reloadSection(CareerSection section) async {
+    try {
+      switch (section) {
+        case CareerSection.education:
+          _education = await _repository.educations();
+        case CareerSection.experience:
+          _experience = await _repository.experiences();
+        case CareerSection.skills:
+          _skills = await _repository.skills();
+        case CareerSection.projects:
+          _projects = await _repository.projects();
+        case CareerSection.certifications:
+          _certifications = await _repository.certifications();
+        case CareerSection.languages:
+          _languages = await _repository.languages();
+      }
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+    }
+    notifyListeners();
   }
 
   void clearError() {

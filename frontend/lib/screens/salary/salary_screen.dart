@@ -7,6 +7,7 @@ import '../../core/widgets/widgets.dart';
 import '../../models/models.dart';
 import '../../repositories/careeros_repository.dart';
 import '../../core/network/api_client.dart';
+import '../../core/utils/currency_formatter.dart';
 
 class SalaryScreen extends StatefulWidget {
   const SalaryScreen({super.key});
@@ -485,9 +486,9 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
           if (estimate.minimumSalary != null || estimate.maximumSalary != null) ...[
             Row(
               children: [
-                Expanded(child: _DetailItem(label: 'Minimum', value: _formatSalary(estimate.minimumSalary), color: AppColors.textTertiary)),
-                Expanded(child: _DetailItem(label: 'Expected', value: _formatSalary(estimate.expectedSalary), color: AppColors.primary, highlight: true)),
-                Expanded(child: _DetailItem(label: 'Maximum', value: _formatSalary(estimate.maximumSalary), color: AppColors.success)),
+                Expanded(child: _DetailItem(label: 'Minimum', value: _formatSalary(estimate.minimumSalary, estimate.currency), color: AppColors.textTertiary)),
+                Expanded(child: _DetailItem(label: 'Expected', value: _formatSalary(estimate.expectedSalary, estimate.currency), color: AppColors.primary, highlight: true)),
+                Expanded(child: _DetailItem(label: 'Maximum', value: _formatSalary(estimate.maximumSalary, estimate.currency), color: AppColors.success)),
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -526,11 +527,8 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
     );
   }
 
-  String _formatSalary(double? salary) {
-    if (salary == null) return '—';
-    if (salary >= 1000000) return '\$${(salary / 1000000).toStringAsFixed(1)}M';
-    if (salary >= 1000) return '\$${(salary / 1000).toStringAsFixed(0)}K';
-    return '\$${salary.toStringAsFixed(0)}';
+  String _formatSalary(double? salary, String? currency) {
+    return CurrencyFormatter.format(salary, currency);
   }
 }
 
@@ -746,6 +744,7 @@ class _SalaryHistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currency = estimate.currency ?? 'USD';
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: AppCard(
@@ -775,12 +774,12 @@ class _SalaryHistoryTile extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '${_formatSalary(estimate.minimumSalary)} – ${_formatSalary(estimate.maximumSalary)}',
+                        '${CurrencyFormatter.format(estimate.minimumSalary, currency)} – ${CurrencyFormatter.format(estimate.maximumSalary, currency)}',
                         style: AppTypography.bodyMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
                       ),
                       if (estimate.expectedSalary != null) ...[
                         const SizedBox(width: AppSpacing.md),
-                        Text('(Expected: ${_formatSalary(estimate.expectedSalary)})', style: AppTypography.caption),
+                        Text('(Expected: ${CurrencyFormatter.format(estimate.expectedSalary, currency)})', style: AppTypography.caption),
                       ],
                     ],
                   ),
@@ -793,13 +792,6 @@ class _SalaryHistoryTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatSalary(double? salary) {
-    if (salary == null) return '—';
-    if (salary >= 1000000) return '\$${(salary / 1000000).toStringAsFixed(1)}M';
-    if (salary >= 1000) return '\$${(salary / 1000).toStringAsFixed(0)}K';
-    return '\$${salary.toStringAsFixed(0)}';
   }
 
   String _formatDate(String? dateStr) {

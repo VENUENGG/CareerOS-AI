@@ -52,7 +52,14 @@ class AppChip extends StatelessWidget {
             leading!,
             const SizedBox(width: AppSpacing.sm),
           ],
-          Text(label, style: AppTypography.labelMedium.copyWith(color: fgColor)),
+          Flexible(
+            child: Text(
+              label,
+              style: AppTypography.labelMedium.copyWith(color: fgColor),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
           if (trailing != null) ...[
             const SizedBox(width: AppSpacing.sm),
             trailing!,

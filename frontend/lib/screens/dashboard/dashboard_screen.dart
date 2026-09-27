@@ -223,12 +223,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: AppTypography.labelSmall.copyWith(color: _completionColor(completion), fontWeight: FontWeight.w600),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
+                // Job title has no length limit from the backend and this
+                // Row has no scroll/wrap fallback, so the chip MUST be
+                // Flexible -- otherwise Row hands its Container unbounded
+                // width, the ellipsis never gets a width to clip against,
+                // and a long title overflows the app bar instead of
+                // truncating (the actual root cause of the on-device
+                // overflow banner here).
                 if (profile?.currentJobTitle != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
-                    decoration: BoxDecoration(color: AppColors.surfaceElevated, borderRadius: AppRadii.chip),
-                    child: Text(profile!.currentJobTitle!, style: AppTypography.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(width: AppSpacing.sm),
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                      decoration: BoxDecoration(color: AppColors.surfaceElevated, borderRadius: AppRadii.chip),
+                      child: Text(profile!.currentJobTitle!, style: AppTypography.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
                   ),
                 ],
               ],
@@ -241,12 +250,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.only(right: AppSpacing.lg),
           child: Row(
             children: [
-              AppIconButton(
-                icon: const Icon(Icons.notifications_outlined, size: 22),
-                onPressed: () {},
-                tooltip: 'Notifications',
-              ),
-              const SizedBox(width: AppSpacing.sm),
               AppIconButton(
                 icon: const Icon(Icons.settings_outlined, size: 22),
                 onPressed: () => context.go('/settings'),
@@ -297,69 +300,112 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildCareerHealth(int completion) {
     final color = _completionColor(completion);
     final icon = _completionIcon(completion);
+    final profile = context.watch<AuthProvider>().profileData;
+    final data = context.watch<CareerDataProvider>();
+    
+    final missingItems = _getMissingItems(profile, data);
 
-    // The single most important metric on the dashboard gets the one hero
-    // treatment on the page -- everything else stays on plain AppCard so
-    // this doesn't have to compete with a wall of identical containers.
     return HeroPanel(
       padding: AppSpacing.xxlAll,
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [color.withValues(alpha: 0.16), AppColors.surfaceElevated],
+        colors: [color.withValues(alpha: 0.12), AppColors.surfaceElevated],
       ),
-      borderColor: color.withValues(alpha: 0.3),
-      child: Row(
+      borderColor: color.withValues(alpha: 0.25),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionHeader(
+          Row(
+            children: [
+              Expanded(
+                child: SectionHeader(
                   icon: Icons.favorite_outline_rounded,
                   title: 'Career Health',
                   iconColor: color,
                 ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  _healthDescription(completion),
-                  style: AppTypography.bodyMedium.muted(),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: completion / 100,
-                    minHeight: 10,
-                    backgroundColor: AppColors.border,
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(child: Text('$completion% complete', style: AppTypography.labelMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                    const SizedBox(width: AppSpacing.sm),
-                    Flexible(child: Text(_nextMilestone(completion), style: AppTypography.labelSmall.primary(), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right)),
-                  ],
-                ),
-              ],
+              ),
+              CircularProgressCard(
+                label: '',
+                progress: completion / 100,
+                value: '$completion%',
+                size: 72,
+                strokeWidth: 6,
+                progressColor: color,
+                centerChild: Icon(icon, size: 24, color: color),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            child: LinearProgressIndicator(
+              value: completion / 100,
+              minHeight: 8,
+              backgroundColor: AppColors.border,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
-          const SizedBox(width: AppSpacing.xl),
-          CircularProgressCard(
-            label: '',
-            progress: completion / 100,
-            value: '$completion%',
-            size: 80,
-            strokeWidth: 8,
-            progressColor: color,
-            centerChild: Icon(icon, size: 28, color: color),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('$completion% complete', style: AppTypography.labelMedium),
+              Text(_healthLabel(completion), style: AppTypography.labelMedium.copyWith(color: color)),
+            ],
           ),
+          if (missingItems.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xl),
+            Text('Improve your profile', style: AppTypography.titleSmall),
+            const SizedBox(height: AppSpacing.md),
+            ...missingItems.take(3).map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _HealthActionTile(
+                label: item.label,
+                onTap: item.onTap,
+              ),
+            )),
+          ],
         ],
       ),
     );
+  }
+  
+  List<_HealthAction> _getMissingItems(UserProfile? profile, CareerDataProvider data) {
+    final items = <_HealthAction>[];
+    
+    if (profile?.headline == null || (profile?.headline?.isEmpty ?? true)) {
+      items.add(_HealthAction('Add a professional headline', () => context.go('/profile')));
+    }
+    if (profile?.currentJobTitle == null || (profile?.currentJobTitle?.isEmpty ?? true)) {
+      items.add(_HealthAction('Add your current role', () => context.go('/profile')));
+    }
+    if (data.skills.length < 5) {
+      items.add(_HealthAction('Add ${5 - data.skills.length} more skills', () => context.go('/profile/skills')));
+    }
+    if (data.experience.isEmpty) {
+      items.add(_HealthAction('Add work experience', () => context.go('/profile/experience')));
+    }
+    if (data.education.isEmpty) {
+      items.add(_HealthAction('Add education', () => context.go('/profile/education')));
+    }
+    if (data.projects.isEmpty) {
+      items.add(_HealthAction('Add a project', () => context.go('/profile/projects')));
+    }
+    if (profile?.bio == null || (profile?.bio?.isEmpty ?? true)) {
+      items.add(_HealthAction('Write a bio', () => context.go('/profile')));
+    }
+    if (data.resumes.isEmpty) {
+      items.add(_HealthAction('Create your first resume', () => context.go('/resume')));
+    }
+    
+    return items;
+  }
+  
+  String _healthLabel(int completion) {
+    if (completion >= 80) return 'Strong';
+    if (completion >= 50) return 'Good';
+    return 'Needs work';
   }
 
   Widget _buildQuickStats(CareerDataProvider data) {
@@ -629,17 +675,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Icons.insights_rounded;
   }
 
-  String _healthDescription(int completion) {
-    if (completion >= 80) return 'Your profile is strong and ready for opportunities.';
-    if (completion >= 50) return 'Good foundation. Add more details to improve visibility.';
-    return 'Your profile needs work. Complete key sections to unlock full features.';
-  }
 
-  String _nextMilestone(int completion) {
-    if (completion >= 80) return 'Maintain excellence';
-    if (completion >= 50) return '${80 - completion}% to strong';
-    return '${50 - completion}% to good';
-  }
 
   String _formatLocation(UserProfile? profile) {
     final parts = <String>[];
@@ -730,6 +766,46 @@ class _ActionItem {
   final VoidCallback onTap;
 
   _ActionItem({required this.icon, required this.label, required this.subtitle, required this.color, required this.onTap});
+}
+
+class _HealthAction {
+  final String label;
+  final VoidCallback onTap;
+
+  _HealthAction(this.label, this.onTap);
+}
+
+class _HealthActionTile extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _HealthActionTile({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      borderRadius: AppRadii.md,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(color: AppColors.border, width: 0.5),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(label, style: AppTypography.bodySmall),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textTertiary),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ActionCard extends StatelessWidget {
