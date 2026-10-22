@@ -10,20 +10,20 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_config.dart';
 import '../../core/storage/token_storage.dart';
 import '../../core/widgets/widgets.dart';
+import '../../providers/app_providers.dart';
+import '../../repositories/careeros_repository.dart';
 
 // Conditional import: web-specific PDF opening vs stub for non-web
 import '_pdf_downloader_stub.dart'
     if (dart.library.js_interop) '_pdf_downloader_web.dart' as pdf_helper;
 
-/// A real, in-app "open resume" experience that works across all platforms.
+/// An in-app "open resume" experience that works across all platforms.
 ///
-/// - **Web**: Fetches PDF bytes with authentication, creates a Blob URL, and
-///   opens in a new browser tab with proper cleanup.
-/// - **Mobile/Desktop**: Loads the resume's rendered HTML in a WebView with
-///   loading state, error handling, and retry mechanism.
-///
-/// This is its own top-level route (not inside AppShell's ShellRoute), so
-/// it owns its own Scaffold.
+/// - **Web**: Fetches authenticated PDF bytes, creates a Blob URL, opens in a
+///   new browser tab, and provides Download and Re-open controls.
+/// - **Mobile**: Loads the resume's rendered HTML in a WebView, with an AppBar
+///   action to download/share the actual PDF.
+/// - **Desktop**: Displays a clean PDF preview card with one-click download/export.
 class ResumeViewerScreen extends StatefulWidget {
   final int resumeId;
   final String title;
@@ -36,6 +36,7 @@ class ResumeViewerScreen extends StatefulWidget {
 
 class _ResumeViewerScreenState extends State<ResumeViewerScreen> {
   WebViewController? _controller;
+  Uint8List? _pdfBytes;
   bool _loading = true;
   String? _error;
   int _retryCount = 0;
@@ -53,10 +54,30 @@ class _ResumeViewerScreenState extends State<ResumeViewerScreen> {
     });
 
     try {
+      final repo = context.read<CareerOSRepository>();
+      final data = context.read<CareerDataProvider>();
+
+      // Ensure selections are present so the backend can render PDF or HTML
+      await repo.ensureResumeSelections(
+        widget.resumeId,
+        skillIds: data.skills.map((s) => s.id).whereType<int>().toList(),
+        projectIds: data.projects.map((p) => p.id).whereType<int>().toList(),
+        experienceIds: data.experience.map((e) => e.id).whereType<int>().toList(),
+        educationIds: data.education.map((e) => e.id).whereType<int>().toList(),
+        certificationIds: data.certifications.map((c) => c.id).whereType<int>().toList(),
+        languageIds: data.languages.map((l) => l.id).whereType<int>().toList(),
+      );
+
+      final bytes = await repo.resumePdfBytes(widget.resumeId);
+      if (bytes.isEmpty) {
+        throw ApiException('Server returned an empty PDF file.');
+      }
+      _pdfBytes = Uint8List.fromList(bytes);
+
       if (kIsWeb) {
         await _loadWeb();
       } else {
-        await _loadMobile();
+        await _loadMobileOrDesktop();
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -75,97 +96,103 @@ class _ResumeViewerScreenState extends State<ResumeViewerScreen> {
     }
   }
 
-  /// Web implementation: Fetch PDF bytes and open in new tab
+  /// Web implementation: opens PDF blob in browser tab and updates state
   Future<void> _loadWeb() async {
-    if (!mounted) return;
-
-    // Use the platform-specific helper to open PDF in browser
-    final pdfUrl = '${ApiConfig.baseUrl}/v1/resumes/${widget.resumeId}/pdf';
-    await pdf_helper.openPdfInBrowser(pdfUrl, widget.title);
-
-    // Success - navigate back since PDF opened in new tab
+    if (!mounted || _pdfBytes == null) return;
+    await pdf_helper.openPdfInBrowser(_pdfBytes!, widget.title);
     if (mounted) {
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const material.Text('PDF opened in new tab'),
-          backgroundColor: AppColors.successContainer,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) context.pop();
-      });
     }
   }
 
-  /// Mobile/Desktop implementation: Load HTML in WebView
-  Future<void> _loadMobile() async {
-    final tokenStorage = context.read<TokenStorage>();
-    final token = await tokenStorage.read();
-    
-    if (token == null || token.isEmpty) {
-      throw ApiException('Authentication required', statusCode: 401);
+  /// Mobile/Desktop implementation
+  Future<void> _loadMobileOrDesktop() async {
+    final isDesktop = defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+
+    if (isDesktop) {
+      if (mounted) setState(() => _loading = false);
+      return;
     }
 
-    final url = '${ApiConfig.baseUrl}/v1/templates/resumes/${widget.resumeId}';
-    final controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.disabled)
-      ..setBackgroundColor(AppColors.surface)
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageStarted: (_) {
-          if (mounted) setState(() => _loading = true);
-        },
-        onPageFinished: (_) {
-          if (mounted) {
-            setState(() {
-              _loading = false;
-              _retryCount = 0;
-            });
-          }
-        },
-        onWebResourceError: (error) {
-          if (mounted) {
-            setState(() {
-              _loading = false;
-              _error = 'Failed to load resume: ${error.description}';
-            });
-          }
-        },
-        onHttpError: (error) {
-          if (mounted) {
-            setState(() {
-              _loading = false;
-              _error = _formatHttpError(error.response?.statusCode);
-            });
-          }
-        },
-      ))
-      ..loadRequest(
-        Uri.parse(url),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-    
-    if (mounted) setState(() => _controller = controller);
+    try {
+      final tokenStorage = context.read<TokenStorage>();
+      final token = await tokenStorage.read();
+
+      if (token == null || token.isEmpty) {
+        throw ApiException('Authentication required', statusCode: 401);
+      }
+
+      final url = '${ApiConfig.baseUrl}/v1/templates/resumes/${widget.resumeId}';
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.disabled)
+        ..setBackgroundColor(AppColors.surface)
+        ..setNavigationDelegate(NavigationDelegate(
+          onPageStarted: (_) {
+            if (mounted) setState(() => _loading = true);
+          },
+          onPageFinished: (_) {
+            if (mounted) {
+              setState(() {
+                _loading = false;
+                _retryCount = 0;
+              });
+            }
+          },
+          onWebResourceError: (error) {
+            if (mounted) {
+              setState(() {
+                _loading = false;
+                _error = 'Failed to load resume: ${error.description}';
+              });
+            }
+          },
+          onHttpError: (error) {
+            if (mounted) {
+              setState(() {
+                _loading = false;
+                _error = _formatHttpError(error.response?.statusCode);
+              });
+            }
+          },
+        ))
+        ..loadRequest(
+          Uri.parse(url),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+      if (mounted) setState(() => _controller = controller);
+    } catch (_) {
+      // Graceful fallback on devices/environments without WebView support
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   String _formatApiError(ApiException e) {
-    switch (e.statusCode) {
-      case 401:
-        return 'Session expired. Please sign in again.';
-      case 403:
-        return 'You don\'t have permission to view this resume.';
-      case 404:
-        return 'Resume not found. It may have been deleted.';
-      case 500:
-        return 'Server error. Please try again in a moment.';
-      default:
-        if (e.message.contains('timeout') || e.message.contains('connection')) {
-          return 'Connection failed. Check your internet and try again.';
-        }
-        return e.message;
+    if (e.statusCode == 401) {
+      return 'Session expired. Please sign in again.';
     }
+    if (e.statusCode == 403) {
+      return 'You don\'t have permission to view this resume.';
+    }
+    final lower = e.message.toLowerCase();
+    if (lower.contains('profile not found') || lower.contains('user profile')) {
+      return 'Please complete your profile before viewing resumes.';
+    }
+    if (lower.contains('selection')) {
+      return 'Resume content has not been selected yet. Please configure resume content.';
+    }
+    if (e.statusCode == 404 || lower.contains('not found') || lower.contains('does not exist')) {
+      return 'Resume not found. It may have been deleted.';
+    }
+    if (lower.contains('timeout') || lower.contains('connection')) {
+      return 'Connection failed. Check your internet connection and try again.';
+    }
+    if (e.statusCode != null && e.statusCode! >= 500) {
+      return 'Server error. Please try again in a moment.';
+    }
+    return e.message.isNotEmpty ? e.message : 'Couldn\'t load this resume. Please try again.';
   }
 
   String _formatHttpError(int? statusCode) {
@@ -190,8 +217,25 @@ class _ResumeViewerScreenState extends State<ResumeViewerScreen> {
     _load();
   }
 
+  Future<void> _download() async {
+    if (_pdfBytes == null) return;
+    await pdf_helper.downloadPdf(_pdfBytes!, widget.title);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const material.Text('Resume download initiated'),
+          backgroundColor: AppColors.successContainer,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final showWebOrDesktopCard = !kIsWeb && _controller == null && _pdfBytes != null && !_loading && _error == null;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -201,9 +245,19 @@ class _ResumeViewerScreenState extends State<ResumeViewerScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
-          if (!_loading && _error == null && !kIsWeb)
+          if (_pdfBytes != null)
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: AppIconButton(
+                icon: const Icon(Icons.download_rounded, size: 22),
+                tooltip: 'Download PDF',
+                onPressed: _download,
+              ),
+            ),
+          if (!_loading && _error == null && !kIsWeb && _controller != null)
             AppIconButton(
               icon: const Icon(Icons.refresh_rounded, size: 22),
+              tooltip: 'Refresh',
               onPressed: _retry,
             ),
         ],
@@ -212,7 +266,86 @@ class _ResumeViewerScreenState extends State<ResumeViewerScreen> {
         children: [
           if (_controller != null && _error == null && !kIsWeb)
             WebViewWidget(controller: _controller!),
-          
+
+          if (kIsWeb && !_loading && _error == null && _pdfBytes != null)
+            Center(
+              child: Padding(
+                padding: AppSpacing.xxlAll,
+                child: AppCard(
+                  padding: AppSpacing.xxlAll,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: AppSpacing.lgAll,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.picture_as_pdf_rounded, size: 40, color: AppColors.primary),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      material.Text(widget.title, style: AppTypography.titleLarge, textAlign: TextAlign.center),
+                      const SizedBox(height: AppSpacing.xs),
+                      material.Text('PDF document generated successfully', style: AppTypography.bodySmall.muted()),
+                      const SizedBox(height: AppSpacing.xl),
+                      Wrap(
+                        spacing: AppSpacing.md,
+                        runSpacing: AppSpacing.md,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          AppButton(
+                            label: 'Re-open in browser',
+                            leading: const Icon(Icons.open_in_new_rounded, size: 18),
+                            onPressed: () => pdf_helper.openPdfInBrowser(_pdfBytes!, widget.title),
+                            style: AppButtonStyle.outline,
+                          ),
+                          AppButton(
+                            label: 'Download PDF',
+                            leading: const Icon(Icons.download_rounded, size: 18),
+                            onPressed: _download,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          if (showWebOrDesktopCard)
+            Center(
+              child: Padding(
+                padding: AppSpacing.xxlAll,
+                child: AppCard(
+                  padding: AppSpacing.xxlAll,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: AppSpacing.lgAll,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.picture_as_pdf_rounded, size: 40, color: AppColors.primary),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      material.Text(widget.title, style: AppTypography.titleLarge, textAlign: TextAlign.center),
+                      const SizedBox(height: AppSpacing.xs),
+                      material.Text('PDF ready for export', style: AppTypography.bodySmall.muted()),
+                      const SizedBox(height: AppSpacing.xl),
+                      AppButton(
+                        label: 'Download PDF',
+                        leading: const Icon(Icons.download_rounded, size: 18),
+                        onPressed: _download,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
           if (_error != null)
             Center(
               child: Padding(
@@ -228,7 +361,7 @@ class _ResumeViewerScreenState extends State<ResumeViewerScreen> {
                 ),
               ),
             ),
-          
+
           if (_loading && _error == null)
             Container(
               color: AppColors.background,

@@ -7,6 +7,7 @@ import '../../core/widgets/avatar.dart';
 import '../../core/widgets/widgets.dart';
 import '../../models/models.dart';
 import '../../providers/app_providers.dart';
+import '../../core/utils/profile_completeness.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -648,19 +649,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   int _calculateCompletion(UserProfile? profile, CareerDataProvider data) {
-    int score = 0;
-    if (profile?.firstName != null) score += 10;
-    if (profile?.lastName != null) score += 5;
-    if (profile?.headline != null) score += 10;
-    if (profile?.currentJobTitle != null) score += 15;
-    if (profile?.bio != null) score += 10;
-    if (profile?.city != null) score += 5;
-    if (data.experience.isNotEmpty) score += 15;
-    if (data.education.isNotEmpty) score += 10;
-    if (data.skills.length >= 5) score += 10;
-    if (data.projects.isNotEmpty) score += 5;
-    if (data.resumes.isNotEmpty) score += 5;
-    return score.clamp(0, 100);
+    return ProfileCompletenessCalculator.calculate(profile, data);
   }
 
   Color _completionColor(int completion) {

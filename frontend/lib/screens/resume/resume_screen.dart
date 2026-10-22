@@ -12,6 +12,8 @@ import '../../models/models.dart';
 import '../../providers/app_providers.dart';
 import '../../repositories/careeros_repository.dart';
 import '../../core/network/api_client.dart';
+import '_pdf_downloader_stub.dart'
+    if (dart.library.js_interop) '_pdf_downloader_web.dart' as pdf_helper;
 
 class ResumeScreen extends StatefulWidget {
   const ResumeScreen({super.key, this.initialResumeId});
@@ -83,6 +85,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
   }
 
   Future<void> _submitResume() async {
+    if (_creating) return;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _creating = true);
@@ -109,12 +112,19 @@ class _ResumeScreenState extends State<ResumeScreen> {
           );
         }
       } else {
-        await _repository.createResume({
+        final newResume = await _repository.createResume({
           'title': _titleController.text.trim(),
           'templateType': _template,
           'professionalSummary': _summaryController.text.trim(),
           'isPublic': _publicResume,
         });
+        if (newResume.id != null) {
+          try {
+            await _ensureSelections(newResume.id!);
+          } catch (_) {
+            // Non-fatal if selections cannot be initialized immediately
+          }
+        }
         if (mounted) {
           await provider.loadAll();
           _resetForm();
@@ -166,21 +176,37 @@ class _ResumeScreenState extends State<ResumeScreen> {
   }
 
   String _formatError(ApiException e) {
-    switch (e.statusCode) {
-      case 401:
-        return 'Session expired. Please sign in again.';
-      case 403:
-        return 'You don\'t have permission to create resumes.';
-      case 404:
-        return 'Service not found. Please try again later.';
-      case 500:
-        return 'Server error. Please try again in a moment.';
-      default:
-        if (e.message.contains('timeout') || e.message.contains('connection')) {
-          return 'Connection failed. Check your internet and try again.';
-        }
-        return 'Something went wrong. Please try again.';
+    if (e.statusCode == 401) {
+      return 'Session expired. Please sign in again.';
     }
+    if (e.statusCode == 403) {
+      return 'You don\'t have permission to perform this action.';
+    }
+    final lower = e.message.toLowerCase();
+    if (lower.contains('profile not found') || lower.contains('user profile')) {
+      return 'Please complete your profile before creating or managing resumes.';
+    }
+    if (lower.contains('resume not found') || lower.contains('does not exist')) {
+      return 'Resume not found. It may have been deleted.';
+    }
+    if (lower.contains('selection')) {
+      return 'Please select content for this resume before previewing or exporting.';
+    }
+    if (lower.contains('timeout') || lower.contains('connection') || lower.contains('socketexception')) {
+      return 'Connection failed. Check your internet connection and try again.';
+    }
+    if (e.statusCode != null && e.statusCode! >= 500) {
+      return 'Server error. Please try again in a moment.';
+    }
+    if (e.message.isNotEmpty &&
+        !e.message.startsWith('The request returned an invalid status code') &&
+        !e.message.contains('DioException')) {
+      return e.message;
+    }
+    if (e.statusCode == 404) {
+      return 'Requested resource not found.';
+    }
+    return 'Something went wrong. Please try again.';
   }
 
   Future<void> _deleteResume(int id) async {
@@ -247,10 +273,12 @@ class _ResumeScreenState extends State<ResumeScreen> {
     setState(() => _processingResumeId = resume.id);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      // The renderer 400s until the resume has a curated selection; a
-      // resume that was created but never explicitly curated still needs
-      // one before it can be opened, same as ATS analysis.
-      await _ensureSelections(resume.id!);
+      try {
+        await _ensureSelections(resume.id!);
+      } catch (_) {
+        // Non-fatal if selections cannot be verified here; ResumeViewerScreen
+        // will also ensure selections and offers full retry/error UI.
+      }
       if (mounted) {
         context.push('/resume/${resume.id}/view?title=${Uri.encodeComponent(resume.title ?? 'Resume')}');
       }
@@ -260,7 +288,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: const Text('Couldn\'t open this resume. Please try again.'), backgroundColor: AppColors.dangerContainer, behavior: SnackBarBehavior.floating));
+        messenger.showSnackBar(SnackBar(content: Text('Couldn\'t open this resume: $e'), backgroundColor: AppColors.dangerContainer, behavior: SnackBarBehavior.floating));
       }
     } finally {
       if (mounted) setState(() => _processingResumeId = null);
@@ -285,7 +313,36 @@ class _ResumeScreenState extends State<ResumeScreen> {
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: const Text('Couldn\'t share this resume. Please try again.'), backgroundColor: AppColors.dangerContainer, behavior: SnackBarBehavior.floating));
+        messenger.showSnackBar(SnackBar(content: Text('Couldn\'t share this resume: $e'), backgroundColor: AppColors.dangerContainer, behavior: SnackBarBehavior.floating));
+      }
+    } finally {
+      if (mounted) setState(() => _processingResumeId = null);
+    }
+  }
+
+  Future<void> _downloadResume(Resume resume) async {
+    if (resume.id == null) return;
+    setState(() => _processingResumeId = resume.id);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _ensureSelections(resume.id!);
+      final bytes = await _repository.resumePdfBytes(resume.id!);
+      final safeName = (resume.title ?? 'Resume').replaceAll(RegExp(r'[^\w\s-]'), '').trim();
+      await pdf_helper.downloadPdf(Uint8List.fromList(bytes), safeName.isEmpty ? 'Resume' : safeName);
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(
+          content: const Text('Resume download initiated'),
+          backgroundColor: AppColors.successContainer,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(_formatError(e)), backgroundColor: AppColors.dangerContainer, behavior: SnackBarBehavior.floating));
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Couldn\'t download this resume: $e'), backgroundColor: AppColors.dangerContainer, behavior: SnackBarBehavior.floating));
       }
     } finally {
       if (mounted) setState(() => _processingResumeId = null);
@@ -440,6 +497,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
                         busy: _processingResumeId == resume.id,
                         onTap: () => _openResume(resume),
                         onOpen: () => _openResume(resume),
+                        onDownload: () => _downloadResume(resume),
                         onShare: () => _shareResume(resume),
                         onEdit: () => _editResume(resume),
                         onDuplicate: () => _duplicateResume(resume),
@@ -484,6 +542,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
                         busy: _processingResumeId == resume.id,
                         onTap: () => _openResume(resume),
                         onOpen: () => _openResume(resume),
+                        onDownload: () => _downloadResume(resume),
                         onShare: () => _shareResume(resume),
                         onEdit: () => _editResume(resume),
                         onDuplicate: () => _duplicateResume(resume),

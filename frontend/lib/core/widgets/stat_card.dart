@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/design/design.dart';
+import '../utils/currency_formatter.dart';
 import 'app_card.dart';
 import 'app_chip.dart';
 import 'app_button.dart';
@@ -374,6 +375,7 @@ class ResumeCard extends StatelessWidget {
   final DateTime? updatedAt;
   final VoidCallback? onTap;
   final VoidCallback? onOpen;
+  final VoidCallback? onDownload;
   final VoidCallback? onShare;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -391,6 +393,7 @@ class ResumeCard extends StatelessWidget {
     this.updatedAt,
     this.onTap,
     this.onOpen,
+    this.onDownload,
     this.onShare,
     this.onEdit,
     this.onDuplicate,
@@ -458,6 +461,7 @@ class ResumeCard extends StatelessWidget {
               onSelected: (value) {
                 switch (value) {
                   case 'open': onOpen?.call(); break;
+                  case 'download': onDownload?.call(); break;
                   case 'share': onShare?.call(); break;
                   case 'edit': onEdit?.call(); break;
                   case 'duplicate': onDuplicate?.call(); break;
@@ -467,8 +471,9 @@ class ResumeCard extends StatelessWidget {
               },
               itemBuilder: (context) => [
                 if (onOpen != null) const PopupMenuItem(value: 'open', child: Text('Open PDF')),
+                if (onDownload != null) const PopupMenuItem(value: 'download', child: Text('Download PDF')),
                 if (onShare != null) const PopupMenuItem(value: 'share', child: Text('Share')),
-                if (onOpen != null || onShare != null) const PopupMenuDivider(),
+                if (onOpen != null || onDownload != null || onShare != null) const PopupMenuDivider(),
                 const PopupMenuItem(value: 'edit', child: Text('Edit')),
                 const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
                 const PopupMenuItem(value: 'ats', child: Text('Use for ATS Analysis')),
@@ -748,7 +753,7 @@ class _AssessmentList extends StatelessWidget {
 }
 
 class SalaryRangeCard extends StatelessWidget {
-  final String currency;
+  final String? currency;
   final double? minSalary;
   final double? expectedSalary;
   final double? maxSalary;
@@ -761,7 +766,7 @@ class SalaryRangeCard extends StatelessWidget {
 
   const SalaryRangeCard({
     super.key,
-    required this.currency,
+    this.currency,
     this.minSalary,
     this.expectedSalary,
     this.maxSalary,
@@ -801,11 +806,11 @@ class SalaryRangeCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           Row(
             children: [
-              Expanded(child: _SalaryPoint(label: 'Min', value: minSalary, color: AppColors.textTertiary)),
+              Expanded(child: _SalaryPoint(label: 'Min', value: minSalary, color: AppColors.textTertiary, currency: currency)),
               const SizedBox(width: AppSpacing.md),
-              Expanded(child: _SalaryPoint(label: 'Expected', value: expectedSalary, color: AppColors.primary, highlight: true)),
+              Expanded(child: _SalaryPoint(label: 'Expected', value: expectedSalary, color: AppColors.primary, highlight: true, currency: currency)),
               const SizedBox(width: AppSpacing.md),
-              Expanded(child: _SalaryPoint(label: 'Max', value: maxSalary, color: AppColors.success)),
+              Expanded(child: _SalaryPoint(label: 'Max', value: maxSalary, color: AppColors.success, currency: currency)),
             ],
           ),
           if (minSalary != null && maxSalary != null && expectedSalary != null) ...[
@@ -851,8 +856,15 @@ class _SalaryPoint extends StatelessWidget {
   final double? value;
   final Color color;
   final bool highlight;
+  final String? currency;
 
-  const _SalaryPoint({required this.label, this.value, required this.color, this.highlight = false});
+  const _SalaryPoint({
+    required this.label,
+    this.value,
+    required this.color,
+    this.highlight = false,
+    this.currency,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -862,17 +874,11 @@ class _SalaryPoint extends StatelessWidget {
         Text(label, style: AppTypography.caption.copyWith(color: color)),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          value != null ? _formatSalary(value!) : '—',
+          value != null ? CurrencyFormatter.formatCompact(value!, currency) : '—',
           style: (highlight ? AppTypography.headlineSmall : AppTypography.titleLarge).copyWith(color: color, fontWeight: FontWeight.w700),
         ),
       ],
     );
-  }
-
-  String _formatSalary(double salary) {
-    if (salary >= 1000000) return '${(salary / 1000000).toStringAsFixed(1)}M';
-    if (salary >= 1000) return '${(salary / 1000).toStringAsFixed(0)}K';
-    return salary.toStringAsFixed(0);
   }
 }
 

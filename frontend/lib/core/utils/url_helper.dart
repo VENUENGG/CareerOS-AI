@@ -9,8 +9,8 @@ class UrlHelper {
   ///
   /// Returns true if the URL was successfully launched, false otherwise.
   /// Handles URLs that may be missing the protocol (e.g., "github.com/user")
-  static Future<bool> launch(String url) async {
-    if (url.isEmpty) return false;
+  static Future<bool> launch(String? url) async {
+    if (url == null || url.trim().isEmpty) return false;
     
     String normalizedUrl = url.trim();
     
@@ -22,7 +22,11 @@ class UrlHelper {
     }
     
     try {
-      final uri = Uri.parse(normalizedUrl);
+      final uri = Uri.tryParse(normalizedUrl);
+      if (uri == null || !uri.hasScheme) return false;
+      if (uri.scheme != 'mailto' && (!uri.hasAuthority || !uri.host.contains('.'))) {
+        return false;
+      }
       return await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       return false;
@@ -31,13 +35,17 @@ class UrlHelper {
   
   /// Checks if a string appears to be a valid URL.
   static bool isUrl(String? text) {
-    if (text == null || text.isEmpty) return false;
+    if (text == null || text.trim().isEmpty) return false;
     
-    final urlPattern = RegExp(
-      r'^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$',
-      caseSensitive: false,
-    );
-    
-    return urlPattern.hasMatch(text.trim());
+    final trimmed = text.trim();
+    final toParse = (trimmed.startsWith('http://') || trimmed.startsWith('https://'))
+        ? trimmed
+        : 'https://$trimmed';
+    final uri = Uri.tryParse(toParse);
+    if (uri == null || !uri.hasScheme || !uri.hasAuthority || !uri.host.contains('.')) {
+      return false;
+    }
+    if (uri.host.contains(' ')) return false;
+    return true;
   }
 }

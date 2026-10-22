@@ -1086,7 +1086,13 @@ class _ItemFormState extends State<_ItemForm> {
     }
     _formErrorOverride = null;
     if (!valid) return;
-    widget.onSave(values);
+    final payload = Map<String, dynamic>.from(values);
+    for (final entry in values.entries) {
+      if (entry.value is DateTime) {
+        payload[entry.key] = DateFormat('yyyy-MM-dd').format(entry.value as DateTime);
+      }
+    }
+    widget.onSave(payload);
   }
 
   @override

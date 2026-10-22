@@ -84,8 +84,12 @@ class Validators {
 
   static String? url(String? value, {String fieldName = 'URL'}) {
     if (value == null || value.trim().isEmpty) return null;
-    final uri = Uri.tryParse(value.trim());
-    if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+    final trimmed = value.trim();
+    final toParse = (trimmed.startsWith('http://') || trimmed.startsWith('https://'))
+        ? trimmed
+        : 'https://$trimmed';
+    final uri = Uri.tryParse(toParse);
+    if (uri == null || !uri.hasScheme || !uri.hasAuthority || !uri.host.contains('.')) {
       return 'Enter a valid $fieldName';
     }
     return null;

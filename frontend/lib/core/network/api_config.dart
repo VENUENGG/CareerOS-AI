@@ -17,8 +17,9 @@ class ApiConfig {
     }
 
     // Default behavior per platform
+    // Web defaults to same-origin /api to route through the dev-proxy without CORS preflight
     if (kIsWeb) {
-      return 'http://localhost:8080/api';
+      return '/api';
     }
     if (Platform.isAndroid) {
       return 'http://10.0.2.2:8080/api';

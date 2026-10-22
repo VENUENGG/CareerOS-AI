@@ -18,6 +18,7 @@ class AtsScreen extends StatefulWidget {
 }
 
 class _AtsScreenState extends State<AtsScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _jobTitleController = TextEditingController();
   final _jobDescriptionController = TextEditingController();
 
@@ -83,6 +84,10 @@ class _AtsScreenState extends State<AtsScreen> {
       return;
     }
 
+    if (_analysisType == 'JOB_SPECIFIC' && !(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
     final data = context.read<CareerDataProvider>();
 
     setState(() {
@@ -115,7 +120,7 @@ class _AtsScreenState extends State<AtsScreen> {
     } on ApiException catch (e) {
       setState(() => _error = _formatError(e));
     } catch (e) {
-      setState(() => _error = 'Something went wrong. Please try again.');
+      setState(() => _error = 'ATS analysis failed: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -129,31 +134,56 @@ class _AtsScreenState extends State<AtsScreen> {
     try {
       _result = await _repository.atsLatest(resumeId);
       await _loadHistory(resumeId);
+      if (_result == null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('No previous ATS analysis found for this resume. Run an analysis below.'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: AppRadii.card),
+          ),
+        );
+      }
     } on ApiException catch (e) {
       setState(() => _error = _formatError(e));
     } catch (e) {
-      setState(() => _error = 'Something went wrong. Please try again.');
+      setState(() => _error = 'Failed to load latest ATS analysis: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   String _formatError(ApiException e) {
-    switch (e.statusCode) {
-      case 401:
-        return 'Session expired. Please sign in again.';
-      case 403:
-        return 'You don\'t have permission to run ATS analysis.';
-      case 404:
-        return 'Service not found. Please try again later.';
-      case 500:
-        return 'Server error. Please try again in a moment.';
-      default:
-        if (e.message.contains('timeout') || e.message.contains('connection')) {
-          return 'Connection failed. Check your internet and try again.';
-        }
-        return 'Something went wrong. Please try again.';
+    if (e.statusCode == 401) {
+      return 'Session expired. Please sign in again.';
     }
+    if (e.statusCode == 403) {
+      return 'You don\'t have permission to run ATS analysis.';
+    }
+    final lower = e.message.toLowerCase();
+    if (lower.contains('profile not found') || lower.contains('user profile')) {
+      return 'Please complete your profile before running ATS analysis.';
+    }
+    if (lower.contains('selection')) {
+      return 'Resume selections not found. Please ensure content is selected for this resume.';
+    }
+    if (lower.contains('resume not found') || lower.contains('does not exist')) {
+      return 'Resume not found. It may have been deleted.';
+    }
+    if (lower.contains('timeout') || lower.contains('connection')) {
+      return 'Connection failed. Check your internet connection and try again.';
+    }
+    if (e.statusCode != null && e.statusCode! >= 500) {
+      return 'Server error during ATS analysis. Please try again in a moment.';
+    }
+    if (e.message.isNotEmpty &&
+        !e.message.startsWith('The request returned an invalid status code') &&
+        !e.message.contains('DioException')) {
+      return e.message;
+    }
+    if (e.statusCode == 404) {
+      return 'Resume or analysis not found.';
+    }
+    return 'ATS analysis failed. Please try again.';
   }
 
   @override
@@ -258,6 +288,17 @@ class _AtsScreenState extends State<AtsScreen> {
   }
 
   Widget _buildResumePicker(CareerDataProvider data) {
+    if (_selectedResume == null && _resumeIdFromQuery != null && data.resumes.isNotEmpty) {
+      final match = data.resumes.where((r) => r.id == _resumeIdFromQuery).firstOrNull;
+      if (match != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _selectedResume?.id != match.id) {
+            setState(() => _selectedResume = match);
+          }
+        });
+      }
+    }
+
     return AppCard(
       padding: AppSpacing.cardPadding,
       child: Column(
@@ -283,7 +324,10 @@ class _AtsScreenState extends State<AtsScreen> {
                           resume: resume,
                           selected: _selectedResume?.id == resume.id,
                           onTap: () {
-                            setState(() => _selectedResume = resume);
+                            setState(() {
+                              _selectedResume = resume;
+                              _error = null;
+                            });
                             if (resume.id != null) _loadHistory(resume.id!);
                           },
                           onUseLatest: resume.id != null ? () => _loadLatest(resume.id!) : null,
@@ -296,62 +340,69 @@ class _AtsScreenState extends State<AtsScreen> {
   }
 
   Widget _buildAnalysisForm() {
-    return AppCard(
-      padding: AppSpacing.cardPadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(
-            icon: Icons.analytics_outlined,
-            title: 'Analysis Configuration',
-            subtitle: 'Configure how the resume should be analyzed',
-            iconColor: AppColors.info,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          AppSelectField<String>(
-            value: _analysisType,
-            label: 'Analysis Type',
-            items: const ['GENERAL', 'JOB_SPECIFIC']
-                .map((e) => DropdownMenuItem(value: e, child: Text(e.replaceAll('_', ' ')))).toList(),
-            onChanged: (v) => setState(() => _analysisType = v!),
-            prefixIcon: Icon(Icons.analytics_outlined, color: AppColors.textTertiary),
-          ),
-          if (_analysisType == 'JOB_SPECIFIC') ...[
-            const SizedBox(height: AppSpacing.lg),
-            ValidatedFormField(
-              controller: _jobTitleController,
-              label: 'Job Title (Optional)',
-              hint: 'e.g., Senior Software Engineer',
-              validators: [Validators.maxLengthValidator(100, fieldName: 'Job Title')],
-              prefixIcon: Icon(Icons.work_outline_rounded, color: AppColors.textTertiary),
+    return Form(
+      key: _formKey,
+      child: AppCard(
+        padding: AppSpacing.cardPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              icon: Icons.analytics_outlined,
+              title: 'Analysis Configuration',
+              subtitle: 'Configure how the resume should be analyzed',
+              iconColor: AppColors.info,
             ),
             const SizedBox(height: AppSpacing.lg),
-            ValidatedFormField(
-              controller: _jobDescriptionController,
-              label: 'Job Description (Optional)',
-              hint: 'Paste the job description here for targeted analysis...',
-              maxLines: 6,
-              validators: [Validators.maxLengthValidator(5000, fieldName: 'Job Description')],
-              keyboardType: TextInputType.multiline,
-              textInputAction: TextInputAction.newline,
-              prefixIcon: Icon(Icons.description_outlined, color: AppColors.textTertiary),
+            AppSelectField<String>(
+              value: _analysisType,
+              label: 'Analysis Type',
+              items: const ['GENERAL', 'JOB_SPECIFIC']
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e.replaceAll('_', ' ')))).toList(),
+              onChanged: (v) => setState(() => _analysisType = v!),
+              prefixIcon: Icon(Icons.analytics_outlined, color: AppColors.textTertiary),
             ),
+            if (_analysisType == 'JOB_SPECIFIC') ...[
+              const SizedBox(height: AppSpacing.lg),
+              ValidatedFormField(
+                controller: _jobTitleController,
+                label: 'Job Title (Optional)',
+                hint: 'e.g., Senior Software Engineer',
+                validators: [Validators.maxLengthValidator(100, fieldName: 'Job Title')],
+                prefixIcon: Icon(Icons.work_outline_rounded, color: AppColors.textTertiary),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              ValidatedFormField(
+                controller: _jobDescriptionController,
+                label: 'Job Description',
+                hint: 'Paste the target job description here for targeted ATS analysis...',
+                maxLines: 6,
+                validators: [
+                  Validators.required,
+                  Validators.minLengthValidator(20, fieldName: 'Job Description'),
+                  Validators.maxLengthValidator(5000, fieldName: 'Job Description'),
+                ],
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                prefixIcon: Icon(Icons.description_outlined, color: AppColors.textTertiary),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.lg),
+            AppButton(
+              label: _busy ? 'Analyzing...' : 'Analyze Resume',
+              onPressed: (_selectedResume == null || _busy) ? null : _analyze,
+              loading: _busy,
+              fullWidth: true,
+              size: AppButtonSize.large,
+              leading: _busy ? null : const Icon(Icons.radar_rounded, size: 22),
+              style: AppButtonStyle.primary,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              ErrorBanner(message: _error!, onDismiss: () => setState(() => _error = null), icon: Icons.error_outline_rounded),
+            ],
           ],
-          const SizedBox(height: AppSpacing.lg),
-          AppButton(
-            label: _busy ? 'Analyzing...' : 'Analyze Resume',
-            onPressed: (_selectedResume == null || _busy) ? null : _analyze,
-            loading: _busy,
-            fullWidth: true,
-            size: AppButtonSize.large,
-            leading: _busy ? null : const Icon(Icons.radar_rounded, size: 22),
-            style: AppButtonStyle.primary,
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            ErrorBanner(message: _error!, onDismiss: () => setState(() => _error = null), icon: Icons.error_outline_rounded),
-          ],
-        ],
+        ),
       ),
     );
   }

@@ -22,6 +22,8 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
+  final _coachFormKey = GlobalKey<FormState>();
+  final _chatFormKey = GlobalKey<FormState>();
   final _goalController = TextEditingController();
   final _promptController = TextEditingController();
 
@@ -52,8 +54,8 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
   }
 
   Future<void> _runCoach() async {
+    if (!(_coachFormKey.currentState?.validate() ?? false)) return;
     final goal = _goalController.text.trim();
-    if (goal.isEmpty) return;
 
     setState(() {
       _coachBusy = true;
@@ -62,7 +64,17 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
     });
 
     try {
-      _coach = await _repository.careerCoach(goal);
+      final coachResult = await _repository.careerCoach(goal);
+      if (coachResult.careerAssessment == null &&
+          coachResult.recommendedRoles.isEmpty &&
+          coachResult.skillGaps.isEmpty &&
+          coachResult.prioritySkills.isEmpty &&
+          coachResult.nextActions.isEmpty &&
+          coachResult.roadmap.isEmpty) {
+        setState(() => _coachError = 'The AI coach could not generate an assessment. Please check your profile completeness and try again.');
+      } else {
+        _coach = coachResult;
+      }
     } on ApiException catch (e) {
       setState(() => _coachError = _formatError(e));
     } catch (e) {
@@ -73,8 +85,8 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
   }
 
   Future<void> _runGenerate() async {
+    if (!(_chatFormKey.currentState?.validate() ?? false)) return;
     final prompt = _promptController.text.trim();
-    if (prompt.isEmpty) return;
 
     setState(() {
       _chatBusy = true;
@@ -83,7 +95,12 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
     });
 
     try {
-      _answer = await _repository.aiGenerate(prompt);
+      final result = await _repository.aiGenerate(prompt);
+      if (result.trim().isEmpty) {
+        setState(() => _chatError = 'The AI service returned an empty response. Please try rephrasing your question.');
+      } else {
+        _answer = result;
+      }
     } on ApiException catch (e) {
       setState(() => _chatError = _formatError(e));
     } catch (e) {
@@ -305,15 +322,18 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
               padding: AppSpacing.xlAll,
             ),
           ] else ...[
-            ValidatedFormField(
-              controller: _goalController,
-              label: 'What career goal are you pursuing?',
-              hint: 'e.g., Transition to AI Engineering, Get promoted to Staff Engineer, Switch to Product Management',
-              maxLines: 3,
-              validators: [Validators.required, Validators.minLengthValidator(10, fieldName: 'Goal')],
-              keyboardType: TextInputType.multiline,
-              textInputAction: TextInputAction.newline,
-              prefixIcon: Icon(Icons.flag_outlined, color: AppColors.textTertiary),
+            Form(
+              key: _coachFormKey,
+              child: ValidatedFormField(
+                controller: _goalController,
+                label: 'What career goal are you pursuing?',
+                hint: 'e.g., Transition to AI Engineering, Get promoted to Staff Engineer, Switch to Product Management',
+                maxLines: 3,
+                validators: [Validators.required, Validators.minLengthValidator(10, fieldName: 'Goal')],
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                prefixIcon: Icon(Icons.flag_outlined, color: AppColors.textTertiary),
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             AppButton(
@@ -433,15 +453,18 @@ class _AiScreenState extends State<AiScreen> with SingleTickerProviderStateMixin
             subtitle: 'Direct AI generation for any career question',
           ),
           const SizedBox(height: AppSpacing.lg),
-          ValidatedFormField(
-            controller: _promptController,
-            label: 'Your question',
-            hint: 'e.g., How do I negotiate a higher salary? What skills are trending in DevOps?',
-            maxLines: 4,
-            validators: [Validators.required, Validators.minLengthValidator(5, fieldName: 'Question')],
-            keyboardType: TextInputType.multiline,
-            textInputAction: TextInputAction.newline,
-            prefixIcon: Icon(Icons.chat_outlined, color: AppColors.textTertiary),
+          Form(
+            key: _chatFormKey,
+            child: ValidatedFormField(
+              controller: _promptController,
+              label: 'Your question',
+              hint: 'e.g., How do I negotiate a higher salary? What skills are trending in DevOps?',
+              maxLines: 4,
+              validators: [Validators.required, Validators.minLengthValidator(5, fieldName: 'Question')],
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              prefixIcon: Icon(Icons.chat_outlined, color: AppColors.textTertiary),
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           AppButton(

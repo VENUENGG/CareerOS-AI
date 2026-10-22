@@ -17,10 +17,28 @@ class CareerOSRepository {
   Future<List<Project>> projects() async => _list('/v1/projects',Project.fromJson);
   Future<List<Certification>> certifications() async => _list('/v1/certifications',Certification.fromJson);
   Future<List<Language>> languages() async => _list('/v1/languages',Language.fromJson);
-  Future<SocialLinks?> socialLinks() async { final r=await api.get('/v1/social-links'); return SocialLinks.fromJson(Map<String,dynamic>.from(r.data)); }
+  Future<SocialLinks?> socialLinks() async {
+    try {
+      final r = await api.get('/v1/social-links');
+      return SocialLinks.fromJson(Map<String, dynamic>.from(r.data));
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return null;
+      rethrow;
+    }
+  }
   Future<List<Resume>> resumes() async => _list('/v1/resumes',Resume.fromJson);
 
-  Future<List<T>> _list<T>(String path,T Function(Map<String,dynamic>) parse) async { final r=await api.get(path); final raw=r.data; final list=raw is List?raw:(raw['data']??[]); return List<T>.from(list.map((e)=>parse(Map<String,dynamic>.from(e)))); }
+  Future<List<T>> _list<T>(String path, T Function(Map<String, dynamic>) parse) async {
+    try {
+      final r = await api.get(path);
+      final raw = r.data;
+      final list = raw is List ? raw : (raw['data'] ?? []);
+      return List<T>.from(list.map((e) => parse(Map<String, dynamic>.from(e))));
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return <T>[];
+      rethrow;
+    }
+  }
   Future<void> createEducation(Map<String,dynamic>d)=>api.post('/v1/education',data:d);
   Future<void> createExperience(Map<String,dynamic>d)=>api.post('/v1/experience',data:d);
   Future<void> createSkill(Map<String,dynamic>d)=>api.post('/v1/skills',data:d);
@@ -39,7 +57,31 @@ class CareerOSRepository {
   Future<void> deleteProject(int id)=>api.delete('/v1/projects/$id');
   Future<void> deleteCertification(int id)=>api.delete('/v1/certifications/$id');
   Future<void> deleteLanguage(int id)=>api.delete('/v1/languages/$id');
-  Future<void> saveSocialLinks(Map<String,dynamic>d)=>api.post('/v1/social-links',data:d);
+  Future<void> saveSocialLinks(Map<String,dynamic>d, {bool isUpdate = false}) async {
+    if (isUpdate) {
+      try {
+        await api.put('/v1/social-links', data: d);
+      } on ApiException catch (e) {
+        if (e.statusCode == 404) {
+          await api.post('/v1/social-links', data: d);
+        } else {
+          rethrow;
+        }
+      }
+    } else {
+      try {
+        await api.post('/v1/social-links', data: d);
+      } on ApiException catch (e) {
+        if (e.statusCode == 409 || e.statusCode == 400) {
+          await api.put('/v1/social-links', data: d);
+        } else {
+          rethrow;
+        }
+      }
+    }
+  }
+  Future<void> updateSocialLinks(Map<String,dynamic>d) => api.put('/v1/social-links', data: d);
+  Future<void> deleteSocialLinks() => api.delete('/v1/social-links');
   Future<Resume> createResume(Map<String,dynamic>d) async { final r=await api.post('/v1/resumes',data:d); return Resume.fromJson(Map<String,dynamic>.from(r.data)); }
   Future<Resume> updateResume(int id, Map<String,dynamic>d) async { final r=await api.put('/v1/resumes/$id',data:d); return Resume.fromJson(Map<String,dynamic>.from(r.data)); }
   Future<void> deleteById(String path,int id)=>api.delete('$path/$id');
@@ -71,8 +113,33 @@ class CareerOSRepository {
     required List<int> educationIds,
     required List<int> certificationIds,
     required List<int> languageIds,
+    bool force = false,
   }) async {
-    if (await hasResumeSelections(resumeId)) return;
+    if (!force) {
+      try {
+        final r = await api.get('/v1/resumes/$resumeId/selections');
+        final data = r.data is Map ? Map<String, dynamic>.from(r.data) : null;
+        if (data != null) {
+          final hasSavedContent = (data['skillIds'] as List? ?? []).isNotEmpty ||
+              (data['projectIds'] as List? ?? []).isNotEmpty ||
+              (data['experienceIds'] as List? ?? []).isNotEmpty ||
+              (data['educationIds'] as List? ?? []).isNotEmpty ||
+              (data['certificationIds'] as List? ?? []).isNotEmpty ||
+              (data['languageIds'] as List? ?? []).isNotEmpty;
+          final userHasContent = skillIds.isNotEmpty ||
+              projectIds.isNotEmpty ||
+              experienceIds.isNotEmpty ||
+              educationIds.isNotEmpty ||
+              certificationIds.isNotEmpty ||
+              languageIds.isNotEmpty;
+          if (hasSavedContent || !userHasContent) {
+            return;
+          }
+        }
+      } on ApiException catch (e) {
+        if (e.statusCode != 404) rethrow;
+      }
+    }
     await saveResumeSelections(resumeId, {
       'skillIds': skillIds,
       'projectIds': projectIds,
@@ -83,11 +150,59 @@ class CareerOSRepository {
     });
   }
 
-  Future<List<int>> resumePdfBytes(int resumeId) => api.getBytes('/v1/resumes/$resumeId/pdf');
+  Future<List<int>> resumePdfBytes(int resumeId) async {
+    final bytes = await api.getBytes('/v1/resumes/$resumeId/pdf');
+    if (bytes.isEmpty) {
+      throw ApiException('Received empty PDF content from server');
+    }
+    // PDF files start with the magic header %PDF- (0x25, 0x50, 0x44, 0x46, 0x2D)
+    if (bytes.length < 5 ||
+        bytes[0] != 0x25 ||
+        bytes[1] != 0x50 ||
+        bytes[2] != 0x44 ||
+        bytes[3] != 0x46) {
+      final sample = String.fromCharCodes(bytes.take(200));
+      if (sample.contains('error') || sample.contains('message') || sample.startsWith('{')) {
+        throw ApiException('Failed to generate PDF: $sample');
+      }
+      throw ApiException('Invalid PDF format received from server');
+    }
+    return bytes;
+  }
 
-  Future<AtsAnalysis> atsAnalyze(int resumeId,String type,{String?jobTitle,String?jobDescription}) async { final r=await api.post('/v1/resumes/$resumeId/ats/analyze',data:{'analysisType':type,'jobTitle':jobTitle,'jobDescription':jobDescription}); return AtsAnalysis.fromJson(Map<String,dynamic>.from(r.data)); }
-  Future<AtsAnalysis> atsLatest(int resumeId) async { final r=await api.get('/v1/resumes/$resumeId/ats/latest'); return AtsAnalysis.fromJson(Map<String,dynamic>.from(r.data)); }
-  Future<List<AtsAnalysis>> atsHistory(int resumeId) async { final r=await api.get('/v1/resumes/$resumeId/ats/history'); return List<AtsAnalysis>.from((r.data as List).map((e)=>AtsAnalysis.fromJson(Map<String,dynamic>.from(e)))); }
+  Future<AtsAnalysis> atsAnalyze(int resumeId, String type, {String? jobTitle, String? jobDescription}) async {
+    final payload = <String, dynamic>{'analysisType': type};
+    if (type == 'JOB_SPECIFIC') {
+      if (jobTitle != null && jobTitle.isNotEmpty) payload['jobTitle'] = jobTitle;
+      if (jobDescription != null && jobDescription.isNotEmpty) payload['jobDescription'] = jobDescription;
+    }
+    final r = await api.post('/v1/resumes/$resumeId/ats/analyze', data: payload);
+    return AtsAnalysis.fromJson(Map<String, dynamic>.from(r.data));
+  }
+
+  Future<AtsAnalysis?> atsLatest(int resumeId) async {
+    try {
+      final r = await api.get('/v1/resumes/$resumeId/ats/latest');
+      return AtsAnalysis.fromJson(Map<String, dynamic>.from(r.data));
+    } on ApiException catch (e) {
+      if (e.statusCode == 404 || (e.statusCode == 400 && e.message.contains('No ATS analysis found'))) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  Future<List<AtsAnalysis>> atsHistory(int resumeId) async {
+    try {
+      final r = await api.get('/v1/resumes/$resumeId/ats/history');
+      final data = r.data;
+      final list = data is List ? data : (data is Map && data['data'] is List ? data['data'] as List : []);
+      return List<AtsAnalysis>.from(list.map((e) => AtsAnalysis.fromJson(Map<String, dynamic>.from(e))));
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return [];
+      rethrow;
+    }
+  }
   Future<SalaryEstimate> salaryEstimate(Map<String,dynamic>d) async { final r=await api.post('/v1/salary/estimate',data:d); return SalaryEstimate.fromJson(Map<String,dynamic>.from(r.data)); }
   Future<SalaryCompare> salaryCompare(Map<String,dynamic>d) async { final r=await api.post('/v1/salary/compare',data:d); return SalaryCompare.fromJson(Map<String,dynamic>.from(r.data)); }
   Future<List<SalaryEstimate>> salaryHistory() async { final r=await api.get('/v1/salary/history'); return List<SalaryEstimate>.from((r.data as List).map((e)=>SalaryEstimate.fromJson(Map<String,dynamic>.from(e)))); }

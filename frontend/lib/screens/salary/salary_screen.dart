@@ -348,7 +348,7 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
                         controller: _industryController,
                         label: 'Industry',
                         hint: 'e.g., Technology',
-                        validators: [Validators.maxLengthValidator(100, fieldName: 'Industry')],
+                        validators: [Validators.required, Validators.maxLengthValidator(100, fieldName: 'Industry')],
                         prefixIcon: Icon(Icons.factory_outlined, color: AppColors.textTertiary),
                       ),
                     ),
@@ -376,13 +376,13 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
                       child: ValidatedFormField(
                         controller: _currentSalaryController,
                         label: 'Current Salary (Optional)',
-                        hint: '150000',
+                        hint: '1500000',
                         keyboardType: TextInputType.number,
                         validators: [
                           Validators.numericValidator(),
                           Validators.positiveValidator(fieldName: 'Salary'),
                         ],
-                        prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.textTertiary),
+                        prefixIcon: Icon(Icons.payments_outlined, color: AppColors.textTertiary),
                       ),
                     ),
                   ],
@@ -425,8 +425,10 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
   }
 
   Widget _buildEstimateResult(SalaryEstimate estimate) {
+    final currency = estimate.currency ??
+        CurrencyFormatter.resolveCurrency(location: _locationController.text.trim());
     return SalaryRangeCard(
-      currency: estimate.currency ?? 'USD',
+      currency: currency,
       minSalary: estimate.minimumSalary,
       expectedSalary: estimate.expectedSalary,
       maxSalary: estimate.maximumSalary,
@@ -441,6 +443,8 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
     final current = compare.currentSalary ?? 0;
     final expected = compare.expectedSalary ?? 0;
     final pct = compare.percentageDifference ?? 0;
+    final currency = estimate?.currency ??
+        CurrencyFormatter.resolveCurrency(location: _locationController.text.trim());
 
     return AppCard(
       padding: AppSpacing.cardPadding,
@@ -461,9 +465,9 @@ class _SalaryScreenState extends State<SalaryScreen> with SingleTickerProviderSt
           const SizedBox(height: AppSpacing.xl),
           Row(
             children: [
-              Expanded(child: _ComparisonBar(label: 'Current', value: current, color: AppColors.textSecondary)),
+              Expanded(child: _ComparisonBar(label: 'Current', value: current, color: AppColors.textSecondary, currency: currency)),
               const SizedBox(width: AppSpacing.md),
-              Expanded(child: _ComparisonBar(label: 'Market', value: expected, color: AppColors.primary, highlight: true)),
+              Expanded(child: _ComparisonBar(label: 'Market', value: expected, color: AppColors.primary, highlight: true, currency: currency)),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -602,8 +606,15 @@ class _ComparisonBar extends StatelessWidget {
   final double value;
   final Color color;
   final bool highlight;
+  final String? currency;
 
-  const _ComparisonBar({required this.label, required this.value, required this.color, this.highlight = false});
+  const _ComparisonBar({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.highlight = false,
+    this.currency,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -614,7 +625,7 @@ class _ComparisonBar extends StatelessWidget {
         Text(label, style: AppTypography.caption.copyWith(color: color)),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          _formatValue(value),
+          CurrencyFormatter.formatCompact(value, currency),
           style: (highlight ? AppTypography.headlineSmall : AppTypography.titleLarge).copyWith(
             color: color,
             fontWeight: FontWeight.w700,
@@ -641,12 +652,6 @@ class _ComparisonBar extends StatelessWidget {
     if (value < 200000) return 300000;
     if (value < 500000) return 600000;
     return (value * 1.5).ceilToDouble();
-  }
-
-  String _formatValue(double value) {
-    if (value >= 1000000) return '\$${(value / 1000000).toStringAsFixed(1)}M';
-    if (value >= 1000) return '\$${(value / 1000).toStringAsFixed(0)}K';
-    return '\$${value.toStringAsFixed(0)}';
   }
 }
 
@@ -744,7 +749,7 @@ class _SalaryHistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = estimate.currency ?? 'USD';
+    final currency = estimate.currency ?? CurrencyFormatter.resolveCurrency(location: estimate.location);
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: AppCard(

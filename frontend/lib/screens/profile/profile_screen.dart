@@ -11,6 +11,7 @@ import '../../core/widgets/widgets.dart';
 import '../../models/models.dart';
 import '../../providers/app_providers.dart';
 import '../../repositories/careeros_repository.dart';
+import '../../core/utils/profile_completeness.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -1096,21 +1097,7 @@ trailing: Row(
   }
 
   int _calculateCompletion(UserProfile? profile, CareerDataProvider data) {
-    int score = 0;
-    if (profile?.firstName != null) score += 10;
-    if (profile?.lastName != null) score += 5;
-    if (profile?.headline != null) score += 10;
-    if (profile?.currentJobTitle != null) score += 15;
-    if (profile?.bio != null) score += 10;
-    if (profile?.city != null) score += 5;
-    if (data.experience.isNotEmpty) score += 15;
-    if (data.education.isNotEmpty) score += 10;
-    if (data.skills.length >= 5) score += 10;
-    if (data.projects.isNotEmpty) score += 5;
-    if (data.certifications.isNotEmpty) score += 5;
-    if (data.languages.isNotEmpty) score += 5;
-    if (data.resumes.isNotEmpty) score += 5;
-    return score.clamp(0, 100);
+    return ProfileCompletenessCalculator.calculate(profile, data);
   }
 
   Color _completionColor(int completion) {
@@ -1174,7 +1161,7 @@ class _ExperienceTile extends StatelessWidget {
                 if (experience.companyName != null) Text(experience.companyName!, style: AppTypography.bodySmall.muted()),
                 if (experience.startDate != null)
                   Text(
-                    '${_formatDate(experience.startDate!)} – ${experience.currentlyWorking == true ? 'Present' : _formatDate(experience.endDate!)}',
+                    '${_formatDate(experience.startDate!)} – ${experience.currentlyWorking == true ? 'Present' : (experience.endDate != null ? _formatDate(experience.endDate!) : 'Present')}',
                     style: AppTypography.caption,
                   ),
               ],
@@ -1410,7 +1397,18 @@ class _SocialLinkButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Pressable(
-      onTap: () => UrlHelper.launch(url),
+      onTap: () async {
+        final ok = await UrlHelper.launch(url);
+        if (!ok && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not open link: $url'),
+              backgroundColor: AppColors.dangerContainer,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
       borderRadius: AppRadii.chip,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),

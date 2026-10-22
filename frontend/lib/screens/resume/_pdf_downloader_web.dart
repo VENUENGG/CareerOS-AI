@@ -1,25 +1,46 @@
-// Web-only implementation - opens PDF directly in new browser tab.
+// Web-only implementation - opens PDF blob directly in browser or triggers download.
 // This file is ONLY compiled on web targets.
 
+import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
+import 'package:web/web.dart' as web;
 
-Future<void> openPdfInBrowser(String pdfUrl, String title) async {
-  // Open a new browser tab/window. The browser will handle authentication
-  // via cookies if available, or the user can use the browser's native
-  // download dialog.
-  // Using dart:html would be needed here but conditional imports avoid it.
-  // For now, we use a simple approach - the browser will handle the rest.
-  // In practice, the PDF endpoint requires authentication which is handled
-  // by the backend's cookie/session or the user will be prompted.
-  // Note: Full blob URL implementation requires dart:html which is complex
-  // with conditional imports. For now, direct navigation works for most cases.
-  if (kIsWeb) {
-    // Use a simple approach - navigate to PDF URL
-    // The browser will handle the PDF display
+Future<void> openPdfInBrowser(Uint8List bytes, String title) async {
+  if (bytes.isEmpty) return;
+  final jsArray = bytes.toJS;
+  final blobParts = [jsArray].toJS;
+  final blob = web.Blob(
+    blobParts,
+    web.BlobPropertyBag(type: 'application/pdf'),
+  );
+  final url = web.URL.createObjectURL(blob);
+  final win = web.window.open(url, '_blank');
+  if (win == null) {
+    // Popup was blocked by browser - fallback to downloading directly
+    await downloadPdf(bytes, title);
   }
+  // Revoke object URL after giving the browser tab enough time to load it
+  Future.delayed(const Duration(minutes: 5), () {
+    web.URL.revokeObjectURL(url);
+  });
 }
 
-String createPdfObjectUrl(Uint8List data, String mimeType) {
-  // Stub for web - not used in current implementation
-  return '';
+Future<void> downloadPdf(Uint8List bytes, String filename) async {
+  if (bytes.isEmpty) return;
+  final jsArray = bytes.toJS;
+  final blobParts = [jsArray].toJS;
+  final blob = web.Blob(
+    blobParts,
+    web.BlobPropertyBag(type: 'application/pdf'),
+  );
+  final url = web.URL.createObjectURL(blob);
+  final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+  anchor.href = url;
+  anchor.download = filename.endsWith('.pdf') ? filename : '$filename.pdf';
+  web.document.body?.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  Future.delayed(const Duration(minutes: 1), () {
+    web.URL.revokeObjectURL(url);
+  });
 }
