@@ -1,8 +1,10 @@
+
 package com.careeros.security;
 
 import com.careeros.security.filter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -40,6 +42,9 @@ public class SecurityConfig {
                                 "/api/v1/users/register",
                                 "/api/v1/users/login"
                         ).permitAll()
+
+                        // Public health/test endpoint
+                        .requestMatchers(HttpMethod.GET, "/hello").permitAll()
 
                         // Public static resources
                         .requestMatchers(
